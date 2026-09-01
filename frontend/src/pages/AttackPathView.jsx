@@ -1,20 +1,19 @@
 import React, { useState } from 'react';
-import { 
-  Network, 
-  Globe, 
-  Server, 
-  ShieldAlert, 
-  Database, 
-  Flame, 
-  ArrowRight, 
-  ShieldCheck, 
-  Info,
-  ChevronDown,
-  AlertTriangle,
-  Lock
+import {
+  Network,
+  Globe,
+  Server,
+  ShieldAlert,
+  Database,
+  Flame,
+  ShieldCheck,
+  ChevronRight,
 } from 'lucide-react';
-import CurrencyFormatter, { formatINR } from '../components/CurrencyFormatter';
+import CurrencyFormatter from '../components/CurrencyFormatter';
 import RiskBadge from '../components/RiskBadge';
+import PageHeader from '../components/ui/PageHeader';
+import Panel from '../components/ui/Panel';
+import Reveal from '../components/ui/Reveal';
 
 export default function AttackPathView({ onNavigate }) {
   const [selectedNodeIndex, setSelectedNodeIndex] = useState(1); // Default to Payment Server (Node 2)
@@ -99,151 +98,154 @@ export default function AttackPathView({ onNavigate }) {
   ];
 
   const activeNode = attackNodes[selectedNodeIndex];
+  const ActiveIcon = activeNode.icon;
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <Network className="w-5 h-5 text-cyan-400" />
-            <h1 className="text-xl font-bold text-white">Visual Multi-Stage Attack Path</h1>
-          </div>
-          <p className="text-xs text-slate-400 mt-1">
-            End-to-end adversary progression from initial internet discovery to core database exfiltration and financial impact.
-          </p>
-        </div>
+    <div className="p-6 md:p-8 space-y-6 max-w-[1400px] mx-auto">
+      <PageHeader
+        icon={Network}
+        eyebrow="Exposure / Kill Chain"
+        title="Visual Multi-Stage Attack Path"
+        description="End-to-end adversary progression from initial internet discovery to core database exfiltration and financial impact."
+        actions={
+          <button onClick={() => onNavigate('optimizer')} className="btn btn-ok">
+            <ShieldCheck className="w-4 h-4" />
+            <span>Remediate Attack Chain</span>
+          </button>
+        }
+      />
 
-        <button
-          onClick={() => onNavigate('optimizer')}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-glow-emerald transition-all"
+      {/* ===== Kill chain pipeline ===== */}
+      <Reveal delay={60}>
+        <Panel
+          title="Adversary Kill Chain"
+          subtitle="Click any stage node to inspect risk & mitigations"
+          actions={
+            <span className="chip border-danger-800 bg-danger-950 text-danger-300">
+              <span className="live-dot-red !w-[6px] !h-[6px]" />
+              CRITICAL INGRESS: PAYMENT SERVER
+            </span>
+          }
+          bodyClassName="p-5 pt-4"
         >
-          <ShieldCheck className="w-4 h-4" />
-          <span>Remediate Attack Chain in Optimizer</span>
-        </button>
-      </div>
+          <div className="overflow-x-auto -mx-5 px-5 pb-1">
+            <div className="flex items-stretch min-w-[980px] gap-0 py-2">
+              {attackNodes.map((node, index) => {
+                const Icon = node.icon;
+                const isSelected = selectedNodeIndex === index;
+                const isLast = index === attackNodes.length - 1;
+                const isCritical = node.risk_level === 'Critical';
 
-      {/* Interactive Horizontal Flow Pipeline */}
-      <div className="cyber-card p-6 bg-slate-950/80 border-cyan-500/30 overflow-x-auto">
-        <div className="text-[10px] text-slate-400 font-mono uppercase tracking-widest mb-4 flex items-center justify-between">
-          <span>Adversary Kill Chain (Click any stage node to inspect risk & mitigations)</span>
-          <span className="text-rose-400 font-bold">● CRITICAL INGRESS: PAYMENT SERVER</span>
-        </div>
+                return (
+                  <React.Fragment key={node.id}>
+                    <button
+                      onClick={() => setSelectedNodeIndex(index)}
+                      aria-pressed={isSelected}
+                      aria-label={`Inspect ${node.title}`}
+                      className={`flex-1 min-w-[136px] p-3 rounded-lg border text-center flex flex-col items-center transition-all select-none ${
+                        isSelected
+                          ? 'bg-brass-950/50 border-brass-500 -translate-y-1 shadow-[0_4px_18px_-6px_rgba(217,168,78,0.35)]'
+                          : isCritical
+                            ? 'bg-danger-950/25 border-danger-900 hover:border-danger-800'
+                            : 'bg-ink-950 border-ink-800 hover:border-ink-700'
+                      }`}
+                    >
+                      <span className="flex items-center justify-center w-7 h-7 rounded-md mb-2 border text-[10px] font-mono font-bold absolute-reference">
+                        {index + 1}
+                      </span>
+                      <div
+                        className={`p-2 rounded-md mb-2 border ${
+                          isSelected
+                            ? 'bg-brass-500 border-brass-400 text-ink-1000'
+                            : isCritical
+                              ? 'bg-danger-950 text-danger-400 border-danger-800'
+                              : 'bg-ink-900 text-ink-300 border-ink-800'
+                        }`}
+                      >
+                        <Icon className="w-[18px] h-[18px]" />
+                      </div>
+                      <div className="font-semibold text-ink-50 text-[11px] leading-tight">{node.title}</div>
+                      <div className="text-[9px] text-ink-400 font-mono mt-1">{node.subtitle}</div>
+                      <div className="mt-2">
+                        <RiskBadge level={node.risk_level} />
+                      </div>
+                    </button>
 
-        <div className="flex items-center justify-between min-w-[850px] gap-2 py-4">
-          {attackNodes.map((node, index) => {
-            const Icon = node.icon;
-            const isSelected = selectedNodeIndex === index;
-            const isLast = index === attackNodes.length - 1;
+                    {!isLast && (
+                      <div className="w-9 shrink-0 flex flex-col items-center justify-center pb-1" aria-hidden="true">
+                        <svg width="30" height="10" viewBox="0 0 30 10" className="overflow-visible">
+                          <line x1="0" y1="5" x2="30" y2="5" stroke="#5a6478" strokeWidth="1.5" className="flow-line" />
+                        </svg>
+                        <span className="text-[6.5px] font-mono text-ink-500 tracking-[0.18em] mt-1">ATT&amp;CK</span>
+                      </div>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          </div>
+        </Panel>
+      </Reveal>
 
-            return (
-              <React.Fragment key={node.id}>
-                {/* Node Box */}
-                <div 
-                  onClick={() => setSelectedNodeIndex(index)}
-                  className={`cursor-pointer flex-1 p-3.5 rounded-xl border transition-all select-none flex flex-col items-center text-center ${
-                    isSelected
-                      ? 'bg-cyan-950/60 border-cyan-400 shadow-glow-cyan transform -translate-y-1'
-                      : node.risk_level === 'Critical'
-                        ? 'bg-rose-950/30 border-rose-800/60 hover:border-rose-600'
-                        : 'bg-slate-900 border-slate-800 hover:border-slate-700'
-                  }`}
-                >
-                  <div className={`p-2 rounded-lg mb-2 ${
-                    isSelected 
-                      ? 'bg-cyan-500 text-black' 
-                      : node.risk_level === 'Critical' 
-                        ? 'bg-rose-950 text-rose-400 border border-rose-700' 
-                        : 'bg-slate-800 text-slate-300'
-                  }`}>
-                    <Icon className="w-5 h-5" />
-                  </div>
-
-                  <div className="font-bold text-white text-xs leading-tight">
-                    {node.title}
-                  </div>
-                  <div className="text-[10px] text-slate-400 font-mono mt-1">
-                    {node.subtitle}
-                  </div>
-
-                  <div className="mt-2">
-                    <RiskBadge level={node.risk_level} />
-                  </div>
-                </div>
-
-                {/* Connecting Arrow */}
-                {!isLast && (
-                  <div className="flex flex-col items-center justify-center px-1 text-slate-600">
-                    <ArrowRight className="w-4 h-4 text-cyan-500/70" />
-                    <span className="text-[8px] font-mono text-slate-500 mt-0.5">ATT&CK</span>
-                  </div>
-                )}
-              </React.Fragment>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Selected Node Inspection Card */}
+      {/* ===== Selected stage detail ===== */}
       {activeNode && (
-        <div className="cyber-card p-6 border-cyan-500/40 bg-gradient-to-r from-slate-900 via-cyber-card to-slate-900 space-y-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-800">
-            <div className="flex items-center gap-3">
-              <div className="p-3 rounded-xl bg-cyan-950 text-cyan-400 border border-cyan-800">
-                <activeNode.icon className="w-6 h-6" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-base font-bold text-white">{activeNode.title}</h2>
-                  <RiskBadge level={activeNode.risk_level} />
+        <Reveal delay={120}>
+          <Panel className="border-ink-700" bodyClassName="p-6 space-y-5">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-ink-800">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2.5 rounded-lg bg-brass-950 text-brass-400 border border-brass-800 shrink-0">
+                  <ActiveIcon className="w-5 h-5" />
                 </div>
-                <p className="text-xs text-slate-400 font-mono mt-0.5">
-                  MITRE ATT&CK Technique: <strong className="text-cyan-300">{activeNode.technique}</strong>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-[15px] font-semibold text-ink-50">{activeNode.title}</h2>
+                    <RiskBadge level={activeNode.risk_level} />
+                  </div>
+                  <p className="text-[11px] text-ink-400 font-mono mt-1">
+                    MITRE ATT&amp;CK Technique: <strong className="text-brass-300">{activeNode.technique}</strong>
+                  </p>
+                </div>
+              </div>
+
+              {activeNode.eal && (
+                <div className="text-right shrink-0">
+                  <span className="eyebrow">Stage Financial Risk (EAL)</span>
+                  <div className="text-xl font-mono font-bold text-danger-400 mt-0.5">
+                    <CurrencyFormatter value={activeNode.eal} />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="space-y-2">
+                <span className="eyebrow">Threat Mechanics &amp; Exposure Details</span>
+                <p className="text-[12.5px] text-ink-200 leading-relaxed tile p-3.5 font-mono">
+                  {activeNode.description}
                 </p>
-              </div>
-            </div>
-
-            {activeNode.eal && (
-              <div className="text-right">
-                <span className="text-[10px] text-slate-400 uppercase font-mono">Stage Financial Risk (EAL)</span>
-                <div className="text-xl font-bold font-mono text-rose-400">
-                  <CurrencyFormatter value={activeNode.eal} />
+                <div className="text-[11px] text-ink-400 font-mono pt-1">
+                  Target Environment Exposure: <strong className="text-ink-100">{activeNode.exposure}</strong>
                 </div>
               </div>
-            )}
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
-            <div className="space-y-2">
-              <span className="text-[10px] font-mono text-slate-400 uppercase font-semibold">
-                Threat Mechanics & Exposure Details
-              </span>
-              <p className="text-slate-300 leading-relaxed bg-slate-900/80 p-3 rounded-lg border border-slate-800 font-mono">
-                {activeNode.description}
-              </p>
-              <div className="text-[11px] text-slate-400 font-mono">
-                Target Environment Exposure: <strong className="text-white">{activeNode.exposure}</strong>
+              <div className="space-y-2">
+                <span className="eyebrow text-ok-400">Required Security Control &amp; Mitigation</span>
+                <div className="p-3.5 rounded-lg bg-ok-950/40 border border-ok-800/60 text-ink-100 font-mono text-[12px] leading-relaxed">
+                  {activeNode.mitigation}
+                </div>
+                <div className="pt-2 flex justify-end">
+                  <button
+                    onClick={() => onNavigate('optimizer')}
+                    className="btn btn-ok"
+                  >
+                    <span>Apply Fix in Budget Optimizer</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             </div>
-
-            <div className="space-y-2">
-              <span className="text-[10px] font-mono text-emerald-400 uppercase font-semibold">
-                Required Security Control & Mitigation
-              </span>
-              <div className="p-3 rounded-lg bg-emerald-950/30 border border-emerald-700/40 text-slate-200 font-mono">
-                {activeNode.mitigation}
-              </div>
-              <div className="pt-2 flex justify-end">
-                <button
-                  onClick={() => onNavigate('optimizer')}
-                  className="px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-all flex items-center gap-1.5"
-                >
-                  Apply Fix in Budget Optimizer →
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+          </Panel>
+        </Reveal>
       )}
     </div>
   );

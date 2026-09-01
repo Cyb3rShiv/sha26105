@@ -10,10 +10,12 @@ import WhatIfView from './pages/WhatIfView';
 import AttackPathView from './pages/AttackPathView';
 import ComplianceView from './pages/ComplianceView';
 import IngestionView from './pages/IngestionView';
+import Toast from './components/ui/Toast';
 import { api } from './services/api';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [isNavOpen, setIsNavOpen] = useState(false);
   const [dashboardData, setDashboardData] = useState(null);
   const [assets, setAssets] = useState([]);
   const [vulnerabilities, setVulnerabilities] = useState([]);
@@ -76,62 +78,61 @@ export default function App() {
     }
   };
 
+  const navigate = (tab) => {
+    setActiveTab(tab);
+    setIsNavOpen(false);
+  };
+
   const currentEal = dashboardData?.expected_annual_loss || 18400000;
   const currentRiskScore = dashboardData?.enterprise_risk_score || 72;
 
   return (
-    <div className="flex min-h-screen bg-cyber-bg text-cyber-textMain">
-      {/* Left Sidebar Navigation */}
-      <Sidebar 
-        activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
+    <div className="flex min-h-screen bg-ink-1000 text-ink-50">
+      {/* Left sidebar navigation (off-canvas drawer on mobile) */}
+      <Sidebar
+        activeTab={activeTab}
+        setActiveTab={navigate}
         liveEventsCount={events.length}
+        isOpen={isNavOpen}
+        onClose={() => setIsNavOpen(false)}
       />
 
-      {/* Main Content Area */}
+      {/* Main content area */}
       <div className="flex-1 flex flex-col min-w-0">
-        <Header 
+        <Header
           currentEal={currentEal}
           riskScore={currentRiskScore}
           onSimulateEvent={handleSimulateEvent}
           onReset={handleReset}
           isSimulating={isSimulating}
+          onToggleNav={() => setIsNavOpen((v) => !v)}
         />
 
-        {/* Global Toast Notification */}
-        {toastMessage && (
-          <div className="sticky top-16 z-30 bg-cyan-950/90 border-b border-cyan-500/50 px-6 py-2.5 text-xs text-cyan-200 font-mono flex items-center justify-between shadow-glow-cyan backdrop-blur-md">
-            <span>{toastMessage}</span>
-            <button 
-              onClick={() => setToastMessage(null)}
-              className="text-cyan-400 hover:text-white font-bold ml-4"
-            >
-              ✕
-            </button>
-          </div>
-        )}
+        {/* Global toast notification */}
+        {toastMessage && <Toast message={toastMessage} onClose={() => setToastMessage(null)} />}
 
-        <main className="flex-1 pb-12">
+        {/* key re-mounts the page so entrance reveals replay on navigation */}
+        <main key={activeTab} className="flex-1 pb-16">
           {activeTab === 'dashboard' && (
-            <DashboardView 
-              dashboardData={dashboardData} 
-              onNavigate={setActiveTab}
+            <DashboardView
+              dashboardData={dashboardData}
+              onNavigate={navigate}
               onSimulateEvent={handleSimulateEvent}
               isSimulating={isSimulating}
             />
           )}
 
           {activeTab === 'assets' && (
-            <AssetsView 
-              assets={assets} 
-              onNavigate={setActiveTab} 
+            <AssetsView
+              assets={assets}
+              onNavigate={navigate}
             />
           )}
 
           {activeTab === 'vulnerabilities' && (
-            <VulnerabilitiesView 
-              vulnerabilities={vulnerabilities} 
-              onNavigate={setActiveTab} 
+            <VulnerabilitiesView
+              vulnerabilities={vulnerabilities}
+              onNavigate={navigate}
             />
           )}
 
@@ -140,33 +141,33 @@ export default function App() {
           )}
 
           {activeTab === 'optimizer' && (
-            <OptimizerView 
-              onNavigate={setActiveTab} 
+            <OptimizerView
+              onNavigate={navigate}
             />
           )}
 
           {activeTab === 'what_if' && (
-            <WhatIfView 
-              onNavigate={setActiveTab} 
+            <WhatIfView
+              onNavigate={navigate}
             />
           )}
 
           {activeTab === 'attack_path' && (
-            <AttackPathView 
-              onNavigate={setActiveTab} 
+            <AttackPathView
+              onNavigate={navigate}
             />
           )}
 
           {activeTab === 'compliance' && (
-            <ComplianceView 
-              complianceMappings={compliance} 
-              onNavigate={setActiveTab} 
+            <ComplianceView
+              complianceMappings={compliance}
+              onNavigate={navigate}
             />
           )}
 
           {activeTab === 'ingestion' && (
-            <IngestionView 
-              events={events} 
+            <IngestionView
+              events={events}
               onSimulateEvent={handleSimulateEvent}
               isSimulating={isSimulating}
               lastSimulatedResponse={lastSimulatedResponse}

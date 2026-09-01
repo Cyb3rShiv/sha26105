@@ -1,85 +1,550 @@
 @import "tailwindcss";
 
+/* ============================================================
+   CYBER-QUANT — "LEDGER" DESIGN SYSTEM
+   Premium financial-risk aesthetic: ink surfaces, hairline
+   rules, brass accent for brand & money, semantic severity.
+   ============================================================ */
+
+@theme {
+  /* Ink neutrals (cool near-black ramp) */
+  --color-ink-1000: #07090d;
+  --color-ink-950: #0b0e14;
+  --color-ink-900: #10141c;
+  --color-ink-850: #151a24;
+  --color-ink-800: #1b2130;
+  --color-ink-700: #242b3d;
+  --color-ink-600: #303850;
+  --color-ink-500: #414a63;
+  --color-ink-400: #5a6478;
+  --color-ink-300: #7e879b;
+  --color-ink-200: #a9b1c2;
+  --color-ink-100: #d6dae4;
+  --color-ink-50: #eff1f6;
+
+  /* Brass — brand accent & monetary figures */
+  --color-brass-200: #f6e3b4;
+  --color-brass-300: #f0d189;
+  --color-brass-400: #e5bc63;
+  --color-brass-500: #d9a84e;
+  --color-brass-600: #b98934;
+  --color-brass-700: #8f6a26;
+  --color-brass-800: #5d4519;
+  --color-brass-900: #3a2e14;
+  --color-brass-950: #241d0d;
+
+  /* Severity — danger */
+  --color-danger-300: #f5a3ab;
+  --color-danger-400: #f2727d;
+  --color-danger-500: #e05260;
+  --color-danger-600: #c23a48;
+  --color-danger-800: #571c22;
+  --color-danger-900: #341318;
+  --color-danger-950: #240d11;
+
+  /* Severity — warning */
+  --color-warn-300: #f6c98e;
+  --color-warn-400: #f0a94b;
+  --color-warn-500: #e39b3d;
+  --color-warn-600: #c07c26;
+  --color-warn-800: #5c3c13;
+  --color-warn-900: #2e2010;
+  --color-warn-950: #1f160b;
+
+  /* Severity — success */
+  --color-ok-300: #9bd8b8;
+  --color-ok-400: #63c08f;
+  --color-ok-500: #46a873;
+  --color-ok-600: #2f8a5a;
+  --color-ok-800: #17462f;
+  --color-ok-900: #12271c;
+  --color-ok-950: #0c1b14;
+
+  /* Accent — info (charts, neutral data) */
+  --color-info-300: #b9bffa;
+  --color-info-400: #98a0f5;
+  --color-info-500: #7a84ea;
+  --color-info-900: #1b1c33;
+  --color-info-950: #12121f;
+
+  --font-display: "Fraunces", Georgia, "Times New Roman", serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --animate-pulse-dot: pulse-dot 2.2s ease-out infinite;
+  --animate-pulse-dot-red: pulse-dot-red 2.2s ease-out infinite;
+}
+
 @layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
   body {
-    background-color: #070b14;
-    color: #f8fafc;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    background-image: 
-      radial-gradient(at 0% 0%, rgba(6, 182, 212, 0.05) 0px, transparent 50%),
-      radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.05) 0px, transparent 50%);
+    background-color: var(--color-ink-1000);
+    color: var(--color-ink-50);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv05", "cv08";
     min-height: 100vh;
+    background-image:
+      radial-gradient(1100px 480px at 12% -8%, rgba(217, 168, 78, 0.045), transparent 60%),
+      radial-gradient(900px 500px at 95% 0%, rgba(122, 132, 234, 0.04), transparent 55%);
+    background-attachment: fixed;
+  }
+
+  ::selection {
+    background: rgba(217, 168, 78, 0.28);
+    color: var(--color-ink-50);
+  }
+
+  *:focus-visible {
+    outline: 2px solid var(--color-brass-500);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* Refined scrollbars */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-ink-700);
+    border-radius: 4px;
+    border: 2px solid var(--color-ink-1000);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-ink-600);
+  }
+
+  input[type="range"] {
+    accent-color: var(--color-brass-500);
   }
 }
 
-/* Custom modern scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+/* ============================================================
+   COMPONENT PRIMITIVES
+   ============================================================ */
+
+@layer components {
+  /* Hairline-ruled surface panel */
+  .panel {
+    background-color: var(--color-ink-900);
+    border: 1px solid var(--color-ink-800);
+    border-radius: 10px;
+  }
+
+  .panel-hover {
+    transition: border-color 0.18s ease, background-color 0.18s ease, transform 0.18s ease;
+  }
+  .panel-hover:hover {
+    border-color: var(--color-ink-700);
+    background-color: var(--color-ink-850);
+  }
+
+  /* Raised inner tiles (metric rows, code blocks) */
+  .tile {
+    background-color: var(--color-ink-950);
+    border: 1px solid var(--color-ink-800);
+    border-radius: 8px;
+  }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-ink-400);
+  }
+
+  .display-num {
+    font-family: var(--font-display);
+    font-variant-numeric: lining-nums;
+    letter-spacing: -0.01em;
+  }
+
+  /* ---------- Buttons ---------- */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 8px;
+    padding: 0.55rem 0.95rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease,
+      transform 0.1s ease, box-shadow 0.15s ease;
+    user-select: none;
+  }
+  .btn:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .btn-primary {
+    background-color: var(--color-brass-500);
+    color: #1d1608;
+    border: 1px solid var(--color-brass-400);
+  }
+  .btn-primary:hover:not(:disabled) {
+    background-color: var(--color-brass-400);
+    box-shadow: 0 2px 14px -4px rgba(217, 168, 78, 0.45);
+  }
+
+  .btn-ok {
+    background-color: var(--color-ok-500);
+    color: #06130c;
+    border: 1px solid var(--color-ok-400);
+  }
+  .btn-ok:hover:not(:disabled) {
+    background-color: var(--color-ok-400);
+    box-shadow: 0 2px 14px -4px rgba(70, 168, 115, 0.4);
+  }
+
+  .btn-ghost {
+    background-color: transparent;
+    color: var(--color-ink-200);
+    border: 1px solid var(--color-ink-700);
+  }
+  .btn-ghost:hover:not(:disabled) {
+    border-color: var(--color-ink-600);
+    color: var(--color-ink-50);
+    background-color: var(--color-ink-850);
+  }
+
+  .btn-danger-ghost {
+    background-color: transparent;
+    color: var(--color-danger-400);
+    border: 1px solid var(--color-ink-700);
+  }
+  .btn-danger-ghost:hover:not(:disabled) {
+    border-color: var(--color-danger-800);
+    background-color: var(--color-danger-950);
+  }
+
+  .btn-icon {
+    padding: 0.5rem;
+    border-radius: 8px;
+  }
+
+  /* ---------- Inputs ---------- */
+  .input {
+    background-color: var(--color-ink-950);
+    border: 1px solid var(--color-ink-700);
+    border-radius: 8px;
+    font-size: 12px;
+    color: var(--color-ink-50);
+    padding: 0.5rem 0.75rem;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .input::placeholder {
+    color: var(--color-ink-500);
+  }
+  .input:hover {
+    border-color: var(--color-ink-600);
+  }
+  .input:focus {
+    outline: none;
+    border-color: var(--color-brass-600);
+    box-shadow: 0 0 0 3px rgba(217, 168, 78, 0.12);
+  }
+
+  .select {
+    appearance: none;
+    background-color: var(--color-ink-950);
+    border: 1px solid var(--color-ink-700);
+    border-radius: 8px;
+    font-size: 12px;
+    color: var(--color-ink-100);
+    padding: 0.5rem 2rem 0.5rem 0.75rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237e879b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.6rem center;
+    cursor: pointer;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .select:hover {
+    border-color: var(--color-ink-600);
+  }
+  .select:focus {
+    outline: none;
+    border-color: var(--color-brass-600);
+    box-shadow: 0 0 0 3px rgba(217, 168, 78, 0.12);
+  }
+  .select option {
+    background-color: var(--color-ink-900);
+    color: var(--color-ink-50);
+  }
+
+  /* ---------- Chips & badges ---------- */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    padding: 0.2rem 0.55rem;
+    border-radius: 5px;
+    border: 1px solid var(--color-ink-700);
+    background-color: var(--color-ink-850);
+    color: var(--color-ink-300);
+    white-space: nowrap;
+  }
+
+  .severity-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 0.18rem 0.55rem;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+
+  /* ---------- Table base ---------- */
+  .data-table {
+    width: 100%;
+    text-align: left;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  .data-table thead th {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--color-ink-400);
+    padding: 0.8rem 1rem;
+    background-color: var(--color-ink-950);
+    border-bottom: 1px solid var(--color-ink-800);
+    white-space: nowrap;
+  }
+  .data-table tbody td {
+    padding: 0.9rem 1rem;
+    border-bottom: 1px solid var(--color-ink-850);
+    vertical-align: middle;
+  }
+  .data-table tbody tr:last-child td {
+    border-bottom: none;
+  }
+  .data-table tbody tr {
+    transition: background-color 0.12s ease;
+  }
+
+  /* Animated meter track */
+  .meter {
+    height: 5px;
+    border-radius: 999px;
+    background-color: var(--color-ink-800);
+    overflow: hidden;
+  }
+  .meter > span {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    transform-origin: left;
+    animation: meter-fill 0.9s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  }
 }
 
-::-webkit-scrollbar-track {
-  background: #070b14;
+/* ============================================================
+   KEYFRAMES
+   ============================================================ */
+
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-::-webkit-scrollbar-thumb {
-  background: #1e293b;
-  border-radius: 3px;
+@keyframes meter-fill {
+  from {
+    transform: scaleX(0);
+  }
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+@keyframes shimmer {
+  from {
+    background-position: -200% 0;
+  }
+  to {
+    background-position: 200% 0;
+  }
 }
 
-/* Animations */
-@keyframes pulse-subtle {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
-.animate-pulse-subtle {
-  animation: pulse-subtle 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+@keyframes pulse-dot {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(70, 168, 115, 0.5);
+  }
+  60% {
+    box-shadow: 0 0 0 5px rgba(70, 168, 115, 0);
+  }
 }
 
-/* Glassmorphic card styling */
-.cyber-card {
-  background-color: rgba(17, 28, 53, 0.85);
-  backdrop-filter: blur(12px);
-  border: 1px solid #1e293b;
-  border-radius: 0.75rem;
-  padding: 1.25rem;
-  transition: all 0.2s ease-in-out;
+@keyframes pulse-dot-red {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(224, 82, 96, 0.5);
+  }
+  60% {
+    box-shadow: 0 0 0 5px rgba(224, 82, 96, 0);
+  }
 }
 
-.cyber-card:hover {
-  border-color: #334155;
-  background-color: rgba(22, 36, 68, 0.9);
+@keyframes dash-flow {
+  to {
+    stroke-dashoffset: -14;
+  }
 }
 
-.cyber-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.125rem 0.625rem;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+/* ============================================================
+   UTILITIES
+   ============================================================ */
+
+.reveal {
+  opacity: 0;
+  animation: reveal-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: var(--reveal-delay, 0ms);
 }
 
-.shadow-glow-cyan {
-  box-shadow: 0 0 20px -5px rgba(6, 182, 212, 0.35);
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--color-ink-850);
+  border-radius: 6px;
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(122, 132, 234, 0.06) 40%,
+    rgba(214, 218, 228, 0.07) 50%,
+    rgba(122, 132, 234, 0.06) 60%,
+    transparent
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
 }
 
-.shadow-glow-emerald {
-  box-shadow: 0 0 20px -5px rgba(16, 185, 129, 0.35);
+.live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background-color: var(--color-ok-500);
+  animation: pulse-dot 2.2s ease-out infinite;
 }
 
-.shadow-glow-purple {
-  box-shadow: 0 0 20px -5px rgba(139, 92, 246, 0.35);
+.live-dot-red {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background-color: var(--color-danger-500);
+  animation: pulse-dot-red 2.2s ease-out infinite;
 }
 
-.shadow-glow-crimson {
-  box-shadow: 0 0 20px -5px rgba(239, 68, 68, 0.35);
+/* Ledger crosshair marks for hero corners */
+.ledger-marks {
+  position: relative;
+}
+.ledger-marks::before,
+.ledger-marks::after {
+  content: "";
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border-color: var(--color-ink-600);
+  border-style: solid;
+  pointer-events: none;
+}
+.ledger-marks::before {
+  top: -1px;
+  left: -1px;
+  border-width: 1px 0 0 1px;
+  border-top-left-radius: 10px;
+}
+.ledger-marks::after {
+  bottom: -1px;
+  right: -1px;
+  border-width: 0 1px 1px 0;
+  border-bottom-right-radius: 10px;
+}
+
+/* Subtle dot-grid texture for hero surfaces */
+.dot-grid {
+  background-image: radial-gradient(rgba(217, 168, 78, 0.1) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+/* Flow dashes on attack-path connectors */
+.flow-line {
+  stroke-dasharray: 4 10;
+  animation: dash-flow 1.2s linear infinite;
+}
+
+.toast-enter {
+  animation: toast-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Hide number input spinners */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+}
+
+/* ============================================================
+   REDUCED MOTION
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .reveal {
+    opacity: 1;
+    animation: none;
+  }
+  .meter > span {
+    animation: none;
+  }
 }
