@@ -65,11 +65,11 @@ const ALLOCATION_STEPS = [
   {
     budget: 2500000,
     label: '₹25 Lakhs (Optimal 0/1 Knapsack Portfolio)',
-    eal: 12500000,
+    eal: 12700000,
     var95: 48000000,
-    residualRisk: 12500000,
-    reduction: 5900000,
-    rosi: 2.36,
+    residualRisk: 12700000,
+    reduction: 5700000,
+    rosi: 2.28,
     activeControls: 3,
     controls: [
       'Patch Critical KEV Vulnerabilities (₹15L · ₹35L Reduc)',
@@ -210,12 +210,12 @@ export default function LiveUniverseSandbox({ onLaunchConsole }) {
             </div>
 
             <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700">
-              <div className="text-[11px] font-mono uppercase text-slate-400">Portfolio ROSI Multiplier</div>
+              <div className="text-[11px] font-mono uppercase text-slate-400">Benefit-Cost Ratio (BCR)</div>
               <div className="text-xl font-bold font-mono text-teal-400 mt-1">
-                {current.rosi > 0 ? `${current.rosi}x` : '—'}
+                {current.rosi > 0 ? `${current.rosi}x BCR` : '—'}
               </div>
               <div className="text-[10px] text-slate-400 font-mono mt-1">
-                Risk Reduction / Spend
+                128% Net ROSI (₹57L / ₹25L)
               </div>
             </div>
 
@@ -231,12 +231,12 @@ export default function LiveUniverseSandbox({ onLaunchConsole }) {
           </div>
 
           {/* Probability Distribution Area Chart */}
-          <div className="lg:col-span-7 bg-slate-800/50 p-4 rounded-2xl border border-slate-700 h-64">
+          <div className="lg:col-span-7 bg-slate-800/50 p-4 rounded-2xl border border-slate-700 h-64 min-w-0 w-full overflow-hidden">
             <div className="flex items-center justify-between text-xs font-mono text-slate-400 mb-2">
               <span>Loss Exceedance Curve (Tail Risk)</span>
               <span className="text-teal-400 font-bold">Shift: {current.budget > 0 ? 'Compressing Toward Zero' : 'Unbounded Risk'}</span>
             </div>
-            <ResponsiveContainer width="100%" height="85%">
+            <ResponsiveContainer width="100%" height="85%" minWidth={0}>
               <AreaChart data={current.curve}>
                 <defs>
                   <linearGradient id="lossGrad" x1="0" y1="0" x2="0" y2="1">

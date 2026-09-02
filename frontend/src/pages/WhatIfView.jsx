@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Sliders, ArrowRight, ShieldCheck, Check, Layers, RotateCcw, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import CurrencyFormatter, { formatINR } from '../components/CurrencyFormatter';
 import { api } from '../services/api';
@@ -20,6 +20,7 @@ export default function WhatIfView() {
   const [enabledIds, setEnabledIds] = useState(['CTRL-001']); // Default to patching primary Payment Server
   const [simulationResult, setSimulationResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const latestRequestId = useRef(0);
 
   useEffect(() => {
     async function init() {
@@ -33,16 +34,21 @@ export default function WhatIfView() {
   }, []);
 
   const runWhatIf = async (ids) => {
+    const reqId = ++latestRequestId.current;
     setLoading(true);
     try {
       const res = await api.evaluateWhatIf(ids);
-      if (res) {
+      if (reqId === latestRequestId.current && res) {
         setSimulationResult(res);
       }
     } catch (err) {
-      console.error('What-If evaluation failed', err);
+      if (reqId === latestRequestId.current) {
+        console.error('What-If evaluation failed', err);
+      }
     } finally {
-      setLoading(false);
+      if (reqId === latestRequestId.current) {
+        setLoading(false);
+      }
     }
   };
 
@@ -144,7 +150,7 @@ export default function WhatIfView() {
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-mono font-bold uppercase text-teal-800 flex items-center gap-1.5">
                     <ArrowRight className="w-3.5 h-3.5" />
-                    Simulation Delta &amp; ROSI
+                    Simulation Delta &amp; BCR
                   </span>
                   <span className="badge-emerald font-mono">−{mitigatedPct}% Exposure</span>
                 </div>
@@ -177,9 +183,9 @@ export default function WhatIfView() {
                     </span>
                   </div>
                   <div className="p-2.5 rounded-lg bg-teal-50 border border-teal-200 flex items-center justify-between">
-                    <span className="text-xs font-mono font-bold text-teal-800">Portfolio ROSI</span>
+                    <span className="text-xs font-mono font-bold text-teal-800">Benefit-Cost Ratio (BCR)</span>
                     <span className="text-base font-mono font-bold text-teal-800">
-                      {simulationResult.rosi}x
+                      {simulationResult.bcr || simulationResult.rosi}x BCR
                     </span>
                   </div>
                 </div>
@@ -187,6 +193,9 @@ export default function WhatIfView() {
 
               <div className="mt-5 text-[11px] text-slate-500 font-mono">
                 Net Economic Value: <strong className="text-teal-700">{formatINR(simulationResult.net_benefit)}</strong>
+                {simulationResult.rosi_percentage !== undefined && (
+                  <span className="ml-1 text-teal-800 font-bold">({simulationResult.rosi_percentage}% Net ROSI)</span>
+                )}
               </div>
             </div>
           </Reveal>

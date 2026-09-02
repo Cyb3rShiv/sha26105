@@ -54,9 +54,9 @@ const FEATURES = [
     description: 'Solves the bounded 0/1 knapsack dynamic programming problem to select the mathematically optimal portfolio of security controls that maximizes Return on Security Investment (ROSI).',
     previewTitle: '₹25.0 Lakhs Optimal Security Allocation',
     stat1: { label: 'Allocated Budget', value: '₹25.0 L' },
-    stat2: { label: 'Risk Reduction', value: '₹59.0 L' },
-    stat3: { label: 'Portfolio ROSI', value: '2.36x Multiplier' },
-    formula: 'Dynamic Programming state matrix selects Emergency Patching + FIDO2 MFA + Air-Gapped Backups to eliminate ₹59L of baseline risk (32.1%).',
+    stat2: { label: 'Risk Reduction', value: '₹57.0 L' },
+    stat3: { label: 'Benefit-Cost Ratio (BCR)', value: '2.28x BCR (128% Net ROSI)' },
+    formula: 'Dynamic Programming state matrix selects Emergency Patching + FIDO2 MFA + Air-Gapped Backups to eliminate ₹57L of baseline risk (31.0%).',
   },
   {
     id: 'what_if',

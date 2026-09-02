@@ -103,14 +103,14 @@ export default function Header({
           onClick={onSimulateEvent}
           disabled={isSimulating}
           className="btn btn-primary text-xs shadow-sm px-2.5 sm:px-3 py-1.5"
-          title="Inject real-time security telemetry event and trigger live FAIR risk recalculation"
+          title="Inject real-time security signal (threat detection or automated SOAR remediation) and recalculate live FAIR risk"
         >
           {isSimulating ? (
             <RefreshCw className="w-3.5 h-3.5 animate-spin" />
           ) : (
             <Sparkles className="w-3.5 h-3.5" />
           )}
-          <span className="hidden sm:inline">{isSimulating ? 'Recalculating…' : 'Simulate Security Event'}</span>
+          <span className="hidden sm:inline">{isSimulating ? 'Recalculating…' : 'Simulate Telemetry Signal'}</span>
           <span className="sm:hidden">{isSimulating ? '…' : 'Simulate'}</span>
         </button>
 

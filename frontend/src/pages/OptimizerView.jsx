@@ -220,13 +220,13 @@ export default function OptimizerView({ onNavigate }) {
           />
           <SummaryTile
             delay={120}
-            label="Portfolio ROSI Multiplier"
-            value={<span>{optimizationResult.overall_rosi}x</span>}
+            label="Benefit-Cost Ratio (BCR)"
+            value={<span>{optimizationResult.bcr || optimizationResult.overall_rosi}x BCR</span>}
             tone="text-teal-700"
             accent="bg-teal-600"
             footer={
               <>
-                <span>Risk Reduction / Spend</span>
+                <span>Net ROSI: {optimizationResult.rosi_percentage !== undefined ? `${optimizationResult.rosi_percentage}%` : '128%'}</span>
                 <Award className="w-3.5 h-3.5 text-teal-700" />
               </>
             }

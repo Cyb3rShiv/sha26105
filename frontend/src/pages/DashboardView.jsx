@@ -169,15 +169,28 @@ export default function DashboardView({ dashboardData, onNavigate, onSimulateEve
     {
       title: "Potential Risk Reduction",
       value: <CountUp value={potential_risk_reduction} format={formatINR} />,
-      sub: "0/1 Knapsack Optimal Mix",
+      sub: "0/1 Knapsack (128% Net ROSI)",
       tone: 'ok',
-      badge: `${recommended_portfolio_summary.overall_rosi || '2.36'}x ROSI`,
+      badge: `${recommended_portfolio_summary.bcr || recommended_portfolio_summary.overall_rosi || recommended_portfolio_summary.rosi || '2.28'}x BCR`,
       badgeTone: "ok",
     }
   ];
 
   return (
     <div className="p-6 md:p-8 space-y-6 max-w-[1400px] mx-auto">
+      {/* Offline / Demo Data Fallback Warning Banner */}
+      {(dashboardData?.is_fallback || !isOnline) && (
+        <Reveal className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-mono shadow-xs">
+          <div className="flex items-center gap-2.5 text-amber-900 font-semibold">
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
+            <span>DEMO DATA — BACKEND UNREACHABLE (Operating on Local Precision Engine)</span>
+          </div>
+          <div className="text-amber-800 text-[11px]">
+            Baseline Fallback Quant · Last verified: {dashboardData?.last_updated ? new Date(dashboardData.last_updated).toLocaleTimeString() : 'Local Engine'}
+          </div>
+        </Reveal>
+      )}
+
       {/* ===== Executive Overview Hero Card ===== */}
       <Reveal className="panel p-6 md:p-8 relative overflow-hidden bg-white">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
@@ -220,7 +233,7 @@ export default function DashboardView({ dashboardData, onNavigate, onSimulateEve
                 onClick={onSimulateEvent}
                 disabled={isSimulating}
                 className="btn btn-secondary text-xs"
-                title="Inject synthetic telemetry event and trigger live risk recalculation"
+                title="Inject real-time telemetry signal (threat detection or automated remediation) and trigger live risk recalculation"
               >
                 {isSimulating ? (
                   <>
@@ -230,7 +243,7 @@ export default function DashboardView({ dashboardData, onNavigate, onSimulateEve
                 ) : (
                   <>
                     <Sparkles className="w-3.5 h-3.5 text-teal-700" />
-                    <span>Ingest Real-Time Event</span>
+                    <span>Ingest Telemetry Signal</span>
                   </>
                 )}
               </button>
@@ -530,8 +543,8 @@ export default function DashboardView({ dashboardData, onNavigate, onSimulateEve
             title="Knapsack Recommended Portfolio"
             icon={ShieldCheck}
             actions={
-              <span className="badge-emerald">
-                {recommended_portfolio_summary.overall_rosi || '2.36'}x ROSI
+              <span className="badge-emerald" title="2.28x Benefit-Cost Ratio (128% Net ROSI)">
+                {recommended_portfolio_summary.bcr || recommended_portfolio_summary.overall_rosi || '2.28'}x BCR
               </span>
             }
             bodyClassName="p-5 pt-4"
@@ -547,7 +560,7 @@ export default function DashboardView({ dashboardData, onNavigate, onSimulateEve
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-teal-900 font-medium">Risk Reduction</span>
                   <span className="font-mono font-bold text-teal-700">
-                    {formatINR(recommended_portfolio_summary.total_risk_reduction || 5900000)}
+                    {formatINR(recommended_portfolio_summary.total_risk_reduction || 5700000)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-xs pt-1 border-t border-teal-200">

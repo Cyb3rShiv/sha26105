@@ -69,16 +69,18 @@ def run_tests():
     print(f" [PASS] Test 3: Histogram 100% Fat-Tail Retention ({total_trials}/10000 trials across 25 bins)")
     passed += 1
 
-    # Test 4: 0/1 Knapsack Budget Optimizer for INR 25.0 Lakhs (C4, M7)
+    # Test 4: 0/1 Knapsack Budget Optimizer for INR 25.0 Lakhs (Per-Asset Capped Math)
     total += 1
-    opt = optimizer.InvestmentOptimizer.optimize_security_budget(state["controls"], 2500000.0, baseline_eal=eal)
+    opt = optimizer.InvestmentOptimizer.optimize_security_budget(state["controls"], 2500000.0, baseline_eal=eal, assets=state["assets"])
     assert opt["total_cost"] <= 2500000.0, f"Cost exceeded budget: {opt['total_cost']}"
     assert opt["total_cost"] == 2500000.0, f"Expected cost INR 25.0L, got {opt['total_cost']}"
-    assert opt["total_risk_reduction"] == 5900000.0, f"Expected reduction INR 59.0L, got {opt['total_risk_reduction']}"
-    assert opt["overall_rosi"] == 2.36, f"Expected ROSI 2.36x, got {opt['overall_rosi']}"
+    assert opt["total_risk_reduction"] == 5700000.0, f"Expected reduction INR 57.0L, got {opt['total_risk_reduction']}"
+    assert opt["overall_rosi"] == 2.28, f"Expected ROSI 2.28x, got {opt['overall_rosi']}"
     selected_names = [c["name"] for c in opt["selected_controls"]]
     assert len(selected_names) == 3, f"Expected 3 selected controls, got {len(selected_names)}"
-    print(f" [PASS] Test 4: 0/1 Knapsack Optimizer (Budget INR 25.0L -> Reduction INR 59.0L, ROSI: {opt['overall_rosi']}x, Controls: {len(selected_names)})")
+    for p in opt["per_asset_results"]:
+        assert p["residual_eal"] >= 0.0, f"Negative residual on {p['asset_id']}"
+    print(f" [PASS] Test 4: 0/1 Knapsack Optimizer (Budget INR 25.0L -> Reduction INR 57.0L, ROSI: {opt['overall_rosi']}x, Controls: {len(selected_names)})")
     passed += 1
 
     # Test 5: Dashboard Output Grounded in Real Monte Carlo Engine (C1, H8)
@@ -97,7 +99,8 @@ def run_tests():
         state["controls"],
         enabled_control_ids=["CTRL-001", "CTRL-002"],
         baseline_eal=eal,
-        baseline_risk_score=score
+        baseline_risk_score=score,
+        assets=state["assets"]
     )
     assert what_if_res["total_control_cost"] == 2100000.0
     assert what_if_res["risk_reduction"] == 5300000.0
@@ -122,7 +125,8 @@ def run_tests():
     new_evt = evt_res["generated_event"]
     assert new_evt["id"].startswith("EVT-"), f"Invalid event ID: {new_evt['id']}"
     assert len(new_evt["id"]) >= 10, f"Event ID lacks uniqueness entropy: {new_evt['id']}"
-    print(f" [PASS] Test 7: Monotonic Telemetry Ingestion & Unique ID Generated ({new_evt['id']})")
+    assert "direction" in evt_res, "Missing directional indicator on event simulation"
+    print(f" [PASS] Test 7: Monotonic Telemetry Ingestion & Unique ID Generated ({new_evt['id']}, direction: {evt_res['direction']})")
     passed += 1
 
     # Test 8: State Reset Integrity (H7)
@@ -143,6 +147,36 @@ def run_tests():
     except Exception:
         pass
     print(f" [PASS] Test 9: Semantic Validation Enforced (Negative Budget Rejected with 422)")
+    passed += 1
+
+    # Test 10: Non-Negative Residual Risk Invariant Across All Controls Enabled
+    total += 1
+    curr_state = main.get_session_state(session_id)
+    curr_eal, curr_score = main.get_current_metrics(curr_state)
+    all_ctrl_ids = [c["id"] for c in curr_state["controls"]]
+    what_if_all = optimizer.InvestmentOptimizer.evaluate_what_if(
+        curr_state["controls"],
+        enabled_control_ids=all_ctrl_ids,
+        baseline_eal=curr_eal,
+        baseline_risk_score=curr_score,
+        assets=curr_state["assets"]
+    )
+    for p in what_if_all["per_asset_results"]:
+        assert p["residual_eal"] >= 0.0, f"Negative residual on asset {p['asset_id']}: {p['residual_eal']}"
+        assert p["applied_reduction"] <= p["baseline_eal"], f"Reduction exceeded EAL on {p['asset_id']}"
+    assert what_if_all["simulated_eal"] >= 0.0
+    assert what_if_all["simulated_eal"] == 7556666.68 or round(what_if_all["simulated_eal"]/100000, 1) == 75.6
+    print(f" [PASS] Test 10: Non-Negative Residual Invariant (All 8 Controls: Residual = INR {what_if_all['simulated_eal']/100000:.2f}L >= 0, Capped Math Verified)")
+    passed += 1
+
+    # Test 11: Regulatory Matrix Completeness (8 of 8 Controls Mapped)
+    total += 1
+    compliance_items = main.get_compliance(session_id)
+    assert len(compliance_items) == 8, f"Expected 8 mapped controls, got {len(compliance_items)}"
+    mapped_ctrl_ids = {c["linked_control_id"] for c in compliance_items}
+    for c in state["controls"]:
+        assert c["id"] in mapped_ctrl_ids, f"Control {c['id']} missing from compliance mappings"
+    print(f" [PASS] Test 11: Regulatory Matrix Completeness (8 of 8 Security Controls Mapped - 100% Traceability)")
     passed += 1
 
     print("======================================================================")

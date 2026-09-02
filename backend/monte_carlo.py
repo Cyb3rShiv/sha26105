@@ -66,9 +66,10 @@ class MonteCarloSimulator:
         simulated_losses_per_asset = np.zeros((iterations, num_assets))
 
         for i in range(num_assets):
-            median_impact = impacts[i]
-            mu = np.log(median_impact)
-            # Sample log-normal values
+            severity = impacts[i]
+            # Mean-preserving LogNormal parameterization:
+            # E[X] = exp(mu + sigma^2 / 2). Setting mu = ln(severity) - sigma^2 / 2 ensures E[X] = severity.
+            mu = np.log(severity) - (volatility_sigma ** 2) / 2.0
             lognormal_samples = np.random.lognormal(mean=mu, sigma=volatility_sigma, size=iterations)
             simulated_losses_per_asset[:, i] = incident_occurred[:, i] * lognormal_samples
 

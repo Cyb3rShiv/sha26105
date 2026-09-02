@@ -85,11 +85,17 @@ class InvestmentOptimizer:
         total_applied_reduction = round(total_applied_reduction, 2)
         total_residual_eal = round(total_residual_eal, 2)
 
-        # Proportional risk score reduction
-        score_ratio = total_applied_reduction / max(1.0, baseline_eal)
-        simulated_risk_score = max(10, int(round(baseline_risk_score * (1.0 - score_ratio * 0.75))))
+        # Enterprise score strictly monotonic with residual EAL
+        from risk_engine import RiskEngine
+        simulated_risk_score = RiskEngine.calculate_enterprise_risk_score(
+            total_residual_eal,
+            base_eal=baseline_eal,
+            base_score=baseline_risk_score
+        )
 
-        overall_rosi = round(total_applied_reduction / max(1.0, total_cost), 2) if total_cost > 0 else 0.0
+        bcr = round(total_applied_reduction / max(1.0, total_cost), 2) if total_cost > 0 else 0.0
+        rosi_percentage = round(((total_applied_reduction - total_cost) / max(1.0, total_cost)) * 100.0, 1) if total_cost > 0 else 0.0
+        mitigatable_percentage = round((total_applied_reduction / max(1.0, baseline_eal)) * 100.0, 1)
         net_benefit = round(total_applied_reduction - total_cost, 2)
 
         return {
@@ -102,8 +108,12 @@ class InvestmentOptimizer:
             "total_risk_reduction": total_applied_reduction,
             "risk_reduction": total_applied_reduction,
             "net_benefit": net_benefit,
-            "rosi": overall_rosi,
-            "overall_rosi": overall_rosi,
+            "bcr": bcr,
+            "benefit_cost_ratio": bcr,
+            "rosi_percentage": rosi_percentage,
+            "rosi": bcr,  # backward compatibility alias
+            "overall_rosi": bcr,  # backward compatibility alias
+            "mitigatable_percentage": mitigatable_percentage,
             "active_controls_count": len(selected_controls),
             "asset_changes": asset_impacts,
             "per_asset_results": per_asset_results
@@ -183,7 +193,7 @@ class InvestmentOptimizer:
         
         summary = (
             f"Optimized portfolio selected {len(selected_sorted)} controls utilizing ₹{cost_lakhs:.1f}L of ₹{budget_lakhs:.1f}L budget, "
-            f"yielding ₹{reduc_lakhs:.1f}L in financial risk reduction with an overall portfolio ROSI of {overall_rosi}x."
+            f"yielding ₹{reduc_lakhs:.1f}L in financial risk reduction (BCR {calc['bcr']}x / {calc['rosi_percentage']}% Net ROSI)."
         )
 
         return {
@@ -191,7 +201,12 @@ class InvestmentOptimizer:
             "total_cost": best_cost,
             "total_risk_reduction": best_reduction,
             "remaining_risk": remaining_risk,
+            "bcr": calc["bcr"],
+            "benefit_cost_ratio": calc["bcr"],
+            "rosi_percentage": calc["rosi_percentage"],
             "overall_rosi": overall_rosi,
+            "rosi": overall_rosi,
+            "mitigatable_percentage": calc["mitigatable_percentage"],
             "baseline_eal": baseline_eal,
             "optimized_eal": optimized_eal,
             "selected_controls": selected_sorted,

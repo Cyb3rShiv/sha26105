@@ -175,6 +175,31 @@ class RiskEngine:
         }
 
     @classmethod
+    def calculate_enterprise_risk_score(
+        cls,
+        total_eal: float,
+        base_eal: float = 18400000.0,
+        base_score: int = 70
+    ) -> int:
+        """
+        Calculates canonical enterprise-level 0-100 Risk Score strictly monotonic in EAL.
+        Guarantees:
+        - d(score)/d(EAL) >= 0 for all EAL >= 0
+        - Baseline: EAL = 1.84 Cr -> Score = 70
+        - Score stays bounded in [10, 100]
+        """
+        if total_eal <= 0:
+            return 10
+        if total_eal >= base_eal:
+            ratio = (total_eal - base_eal) / base_eal
+            gain = (100 - base_score) * (1.0 - math.exp(-1.2 * ratio))
+            return min(100, max(10, int(round(base_score + gain))))
+        else:
+            ratio = (base_eal - total_eal) / base_eal
+            drop = (base_score - 15) * ratio
+            return min(100, max(10, int(round(base_score - drop))))
+
+    @classmethod
     def evaluate_all_assets(cls, assets: List[Dict[str, Any]], active_controls: List[str] = None) -> Dict[str, Any]:
         """
         Evaluates enterprise-wide risk metrics across all assets taking active controls into account.
@@ -214,11 +239,11 @@ class RiskEngine:
             total_eal += eal
             evaluated_assets.append(asset)
 
-        # Enterprise aggregate score (weighted by EAL contribution)
-        avg_score = int(round(sum(a["risk_score"] for a in evaluated_assets) / max(1, len(evaluated_assets))))
+        # Enterprise aggregate score strictly monotonic in EAL
+        enterprise_score = cls.calculate_enterprise_risk_score(total_eal)
         
         return {
             "total_eal": round(total_eal, 2),
-            "enterprise_risk_score": avg_score,
+            "enterprise_risk_score": enterprise_score,
             "assets": evaluated_assets
         }

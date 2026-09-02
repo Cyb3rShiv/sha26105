@@ -55,11 +55,13 @@ export default function App() {
   const [isSimulating, setIsSimulating] = useState(false);
   const [lastSimulatedResponse, setLastSimulatedResponse] = useState(null);
   const [toastMessage, setToastMessage] = useState(null);
+  const [connectionInfo, setConnectionInfo] = useState({ state: 'ONLINE', message: '' });
 
   // Subscribe to backend connectivity state & auto-reconnect notifications
   useEffect(() => {
-    const unsubConn = subscribeConnectivity((status) => {
+    const unsubConn = subscribeConnectivity((status, info) => {
       setIsOnline(status);
+      if (info) setConnectionInfo(info);
     });
     const unsubReconn = onBackendReconnect(() => {
       setToastMessage("🟢 Reconnected to live FinTrust backend. Real-time telemetry synchronized.");
@@ -75,13 +77,15 @@ export default function App() {
   // Update dynamic document titles
   useEffect(() => {
     if (viewMode === 'landing') {
-      document.title = 'Cyber-Quant | Cyber Risk Quantification & Capital Optimization Platform';
+      document.title = 'Cyber-Quant — Cyber Risk Quantification & Capital Optimization Platform';
+    } else if (viewMode === 'not_found') {
+      document.title = '404 Route Not Found | Cyber-Quant';
     } else {
       document.title = TAB_TITLES[activeTab] || 'Cyber-Quant | FinTrust Bank Console';
     }
   }, [viewMode, activeTab]);
 
-  // Dual pathname and hash-based routing & deep linking support
+  // Dual pathname and hash-based routing & deep linking support with 404 detection
   const syncRoute = useCallback(() => {
     const rawHash = window.location.hash.replace(/^#\/?/, '').trim();
     const rawPath = window.location.pathname.replace(/^\//, '').trim();
@@ -94,8 +98,11 @@ export default function App() {
       if (matched) {
         setActiveTab(matched);
         setViewMode('app');
+      } else if (target === 'telemetry' || target === 'events') {
+        setActiveTab('ingestion');
+        setViewMode('app');
       } else {
-        setViewMode('landing');
+        setViewMode('not_found');
       }
     }
   }, []);
@@ -152,9 +159,10 @@ export default function App() {
       const res = await api.simulateEvent();
       if (res && res.status === 'success') {
         setLastSimulatedResponse(res);
-        setToastMessage(`⚡ ${res.message}`);
+        const icon = res.direction === 'reduced' ? '🛡️' : (res.direction === 'increased' ? '⚡' : '📡');
+        setToastMessage(`${icon} ${res.message}`);
         await fetchGlobalState();
-        setTimeout(() => setToastMessage(null), 6000);
+        setTimeout(() => setToastMessage(null), 6500);
       }
     } catch (err) {
       console.error('Simulation trigger failed', err);
@@ -207,7 +215,13 @@ export default function App() {
         {!isOnline && (
           <div className="bg-amber-600 text-white text-xs font-mono py-1.5 px-4 text-center flex items-center justify-center gap-2">
             <WifiOff className="w-3.5 h-3.5" />
-            <span>Operating in High-Precision Local Fallback Mode (Backend Reconnecting…)</span>
+            <span>
+              {connectionInfo.state === 'BACKEND STARTING'
+                ? 'Backend Starting (Render Free-Tier Cold Spin-up ~30s) — Serving Resilient Local Engine'
+                : connectionInfo.state === 'CONNECTING'
+                ? 'Connecting to Live Engine — Serving Local Analytical Baseline'
+                : 'Resilient Local Engine Active (Zero Latency Offline Quant)'}
+            </span>
           </div>
         )}
         <LandingPage
@@ -225,6 +239,39 @@ export default function App() {
     );
   }
 
+  // Render In-App 404 Experience for Unrecognized Routes
+  if (viewMode === 'not_found') {
+    return (
+      <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center p-6 text-center font-sans">
+        <div className="max-w-md w-full panel p-8 border-slate-200 bg-white shadow-lg space-y-6">
+          <div className="w-16 h-16 rounded-2xl bg-teal-50 border border-teal-200 flex items-center justify-center mx-auto text-teal-700">
+            <span className="text-2xl font-mono font-bold">404</span>
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-slate-900">Console Route Not Found</h1>
+            <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+              The requested view or URL path does not exist in the Cyber-Quant risk management suite.
+            </p>
+          </div>
+          <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <button
+              onClick={handleGoToLanding}
+              className="btn btn-secondary w-full sm:w-auto text-xs font-semibold"
+            >
+              Return to Executive Overview
+            </button>
+            <button
+              onClick={() => handleLaunchConsole('dashboard')}
+              className="btn btn-primary w-full sm:w-auto text-xs font-semibold"
+            >
+              Open CISO Dashboard
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Render Authenticated Console / Application
   return (
     <div className="flex min-h-screen bg-[#f8fafc] text-slate-900 font-sans">
@@ -238,6 +285,7 @@ export default function App() {
         isOpen={isNavOpen}
         onClose={() => setIsNavOpen(false)}
         isOnline={isOnline}
+        connectionInfo={connectionInfo}
       />
 
       {/* Main content area */}
@@ -245,7 +293,13 @@ export default function App() {
         {!isOnline && (
           <div className="bg-amber-600 text-white text-xs font-mono py-1.5 px-4 text-center flex items-center justify-center gap-2 shadow-xs">
             <WifiOff className="w-3.5 h-3.5" />
-            <span>Operating in Local Engine Mode (Backend Reconnecting / Cold-Start)</span>
+            <span>
+              {connectionInfo.state === 'BACKEND STARTING'
+                ? 'Backend Starting (Render Free-Tier Cold Spin-up ~30s) — Serving Resilient Local Engine'
+                : connectionInfo.state === 'CONNECTING'
+                ? 'Connecting to Live Engine — Serving Local Analytical Baseline'
+                : 'Resilient Local Engine Active (Zero Latency Offline Quant)'}
+            </span>
           </div>
         )}
 

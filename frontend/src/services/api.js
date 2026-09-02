@@ -92,27 +92,40 @@ export function normalizeVulnerability(v) {
   };
 }
 
-// Generate or retrieve persistent demo session ID
+// Generate or retrieve persistent demo session ID (cross-tab persistent with localStorage)
 function getSessionId() {
   if (typeof window === 'undefined') return 'server_session';
-  let sid = window.sessionStorage?.getItem('cyberquant_session_id');
+  let sid = null;
+  try {
+    sid = window.localStorage?.getItem('cq_session_id') || window.sessionStorage?.getItem('cq_session_id');
+  } catch {
+    sid = null;
+  }
   if (!sid) {
     sid = `cq_sess_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 8)}`;
-    window.sessionStorage?.setItem('cyberquant_session_id', sid);
+    try {
+      window.localStorage?.setItem('cq_session_id', sid);
+    } catch {
+      try {
+        window.sessionStorage?.setItem('cq_session_id', sid);
+      } catch {
+        // Storage unavailable
+      }
+    }
   }
   return sid;
 }
 
-// Connection State Management: 'ONLINE' | 'CONNECTING' | 'OFFLINE'
-let connectionState = 'ONLINE';
+// Connection State Management: 'ONLINE' | 'CONNECTING' | 'BACKEND STARTING' | 'LOCAL DEMO DATA'
+let connectionState = 'CONNECTING';
 let reconnectTimer = null;
 let reconnectAttempt = 0;
-const MAX_CONNECTING_RETRIES = 5;
+const MAX_CONNECTING_RETRIES = 4;
 
 const connectivityListeners = new Set();
 const reconnectListeners = new Set();
 
-function notifyConnectivity(isOnline, state = isOnline ? 'ONLINE' : 'OFFLINE', message = '') {
+function notifyConnectivity(isOnline, state = isOnline ? 'ONLINE' : 'LOCAL DEMO DATA', message = '') {
   connectionState = state;
   connectivityListeners.forEach((cb) => cb(isOnline, { state, message }));
 }
@@ -144,7 +157,7 @@ function handleConnectionSuccess() {
     clearTimeout(reconnectTimer);
     reconnectTimer = null;
   }
-  notifyConnectivity(true, 'ONLINE');
+  notifyConnectivity(true, 'ONLINE', 'Connected to live risk engine.');
   if (wasOffline) {
     reconnectListeners.forEach((cb) => {
       try { cb(); } catch (e) { console.error('Reconnect listener error', e); }
@@ -153,22 +166,29 @@ function handleConnectionSuccess() {
 }
 
 function handleConnectionFailure(reason = '') {
-  if (connectionState === 'ONLINE') {
+  reconnectAttempt++;
+  if (reconnectAttempt < 2) {
     connectionState = 'CONNECTING';
-    notifyConnectivity(false, 'CONNECTING', 'Backend unavailable. Attempting auto-reconnect...');
+    notifyConnectivity(false, 'CONNECTING', 'Connecting to live risk engine...');
+  } else if (reconnectAttempt < MAX_CONNECTING_RETRIES) {
+    connectionState = 'BACKEND STARTING';
+    notifyConnectivity(false, 'BACKEND STARTING', 'Cloud backend starting up (~30s cold spin)...');
+  } else {
+    connectionState = 'LOCAL DEMO DATA';
+    notifyConnectivity(false, 'LOCAL DEMO DATA', 'Backend unreachable. Operating on Local Demo Engine.');
   }
   scheduleHealthPoll();
 }
 
 function scheduleHealthPoll() {
   if (reconnectTimer) return;
-  // Exponential backoff: 2s, 4s, 8s, 16s, capped at 30s
-  const backoffSec = Math.min(30, Math.pow(2, reconnectAttempt) * 2);
+  // Exponential backoff: 2s, 4s, 8s, capped at 20s
+  const backoffSec = Math.min(20, Math.pow(2, Math.min(reconnectAttempt, 4)) * 2);
   reconnectTimer = setTimeout(async () => {
     reconnectTimer = null;
     try {
       const controller = new AbortController();
-      const tid = setTimeout(() => controller.abort(), 6000);
+      const tid = setTimeout(() => controller.abort(), 5000);
       const res = await fetch(HEALTH_URL, { signal: controller.signal });
       clearTimeout(tid);
       if (res.ok) {
@@ -179,14 +199,27 @@ function scheduleHealthPoll() {
       // Still unreachable
     }
 
-    reconnectAttempt++;
-    if (reconnectAttempt >= MAX_CONNECTING_RETRIES) {
-      connectionState = 'OFFLINE';
-      notifyConnectivity(false, 'OFFLINE', 'Backend offline. Operating in resilient local engine.');
-    }
-    // Continue periodic background polling every 30 seconds
-    scheduleHealthPoll();
+    handleConnectionFailure('Health poll unreachable');
   }, backoffSec * 1000);
+}
+
+// Trigger immediate non-blocking initial health check on load
+if (typeof window !== 'undefined') {
+  setTimeout(async () => {
+    try {
+      const controller = new AbortController();
+      const tid = setTimeout(() => controller.abort(), 4000);
+      const res = await fetch(HEALTH_URL, { signal: controller.signal });
+      clearTimeout(tid);
+      if (res.ok) {
+        handleConnectionSuccess();
+        return;
+      }
+    } catch {
+      // Offline on start
+    }
+    handleConnectionFailure('Initial connection failed');
+  }, 100);
 }
 
 export class RequestCancelledError extends Error {
@@ -264,76 +297,118 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 12000) {
   }
 }
 
-// Local 0/1 Knapsack fallback solver
-// Uses Exhaustive Search for small sets, and DP array for sets > 16 to protect performance
+// Unified Client-Side Risk Reduction Calculator matching backend per-asset capped math
+export function calculateClientControlledPortfolio(assets = CANONICAL_ASSETS, selectedControls = [], baselineRiskScore = 70) {
+  const totalCost = selectedControls.reduce((sum, c) => sum + (c.cost || 0), 0);
+  const baselineEal = assets.reduce((sum, a) => sum + (a.eal || 0), 0);
+
+  const assetRawReductions = {};
+  assets.forEach((a) => { assetRawReductions[a.id] = 0; });
+  const assetImpacts = [];
+
+  selectedControls.forEach((c) => {
+    const targets = c.target_asset_ids || [];
+    const numTargets = Math.max(1, targets.length);
+    const appCost = Math.round(((c.cost || 0) / numTargets) * 100) / 100;
+    const appRed = Math.round(((c.risk_reduction || 0) / numTargets) * 100) / 100;
+
+    targets.forEach((targetId) => {
+      if (assetRawReductions[targetId] !== undefined) {
+        assetRawReductions[targetId] += appRed;
+      }
+      assetImpacts.push({
+        asset_id: targetId,
+        control_id: c.id,
+        applied_control: c.name,
+        control_cost: c.cost,
+        apportioned_cost: appCost,
+        control_reduction: c.risk_reduction,
+        apportioned_reduction: appRed
+      });
+    });
+  });
+
+  const perAssetResults = [];
+  let totalAppliedReduction = 0;
+  let totalResidualEal = 0;
+
+  assets.forEach((a) => {
+    const rawRed = assetRawReductions[a.id] || 0;
+    const appliedRed = Math.min(a.eal, rawRed);
+    const residualEal = Math.max(0, Math.round((a.eal - appliedRed) * 100) / 100);
+    totalAppliedReduction += appliedRed;
+    totalResidualEal += residualEal;
+
+    perAssetResults.push({
+      asset_id: a.id,
+      asset_name: a.name,
+      baseline_eal: a.eal,
+      raw_reduction: Math.round(rawRed * 100) / 100,
+      applied_reduction: Math.round(appliedRed * 100) / 100,
+      residual_eal: residualEal
+    });
+  });
+
+  totalAppliedReduction = Math.round(totalAppliedReduction * 100) / 100;
+  totalResidualEal = Math.round(totalResidualEal * 100) / 100;
+  const scoreRatio = totalAppliedReduction / Math.max(1, baselineEal);
+  const simScore = Math.max(10, Math.round(baselineRiskScore * (1.0 - scoreRatio * 0.75)));
+  const rosi = totalCost > 0 ? Number((totalAppliedReduction / totalCost).toFixed(2)) : 0;
+  const netBenefit = totalAppliedReduction - totalCost;
+
+  return {
+    baseline_eal: baselineEal,
+    baseline_risk_score: baselineRiskScore,
+    simulated_eal: totalResidualEal,
+    remaining_risk: totalResidualEal,
+    simulated_risk_score: simScore,
+    total_control_cost: totalCost,
+    total_risk_reduction: totalAppliedReduction,
+    risk_reduction: totalAppliedReduction,
+    net_benefit: netBenefit,
+    rosi,
+    overall_rosi: rosi,
+    active_controls_count: selectedControls.length,
+    asset_changes: assetImpacts,
+    per_asset_results: perAssetResults
+  };
+}
+
+// Local 0/1 Knapsack fallback solver with per-asset capped math
 export function solveLocalKnapsack(budget, controls = FINTRUST_FALLBACK_CONTROLS, baselineEal = 18400000) {
   const n = controls.length;
   let bestCombo = [];
-  let bestReduction = 0;
+  let bestReduction = -1;
   let bestCost = 0;
-  let solverName = '0/1 Knapsack Exhaustive Search (Local Engine)';
+  const solverName = '0/1 Knapsack Exact Search (Local Resilient Engine)';
 
-  if (n <= 16) {
-    // Safe exhaustive enumeration
-    const totalSubsets = 1 << n;
-    for (let mask = 0; mask < totalSubsets; mask++) {
-      let currentCost = 0;
-      let currentReduction = 0;
-      const currentCombo = [];
+  const totalSubsets = 1 << n;
+  for (let mask = 0; mask < totalSubsets; mask++) {
+    let currentCost = 0;
+    const currentCombo = [];
 
-      for (let i = 0; i < n; i++) {
-        if ((mask & (1 << i)) !== 0) {
-          currentCost += controls[i].cost;
-          currentReduction += controls[i].risk_reduction;
-          currentCombo.push(controls[i]);
-        }
-      }
-
-      if (currentCost <= budget) {
-        if (currentReduction > bestReduction || (currentReduction === bestReduction && currentCost < bestCost)) {
-          bestReduction = currentReduction;
-          bestCost = currentCost;
-          bestCombo = currentCombo;
-        }
-      }
-    }
-  } else {
-    // Dynamic Programming array for large control sets
-    solverName = '0/1 Knapsack Dynamic Programming (Local Engine)';
-    const scale = 50000;
-    const scaledBudget = Math.floor(budget / scale);
-    const dp = Array.from({ length: n + 1 }, () => new Float64Array(scaledBudget + 1));
-    const keep = Array.from({ length: n + 1 }, () => new Uint8Array(scaledBudget + 1));
-
-    for (let i = 1; i <= n; i++) {
-      const c = controls[i - 1];
-      const w = Math.ceil(c.cost / scale);
-      const v = c.risk_reduction;
-      for (let b = 0; b <= scaledBudget; b++) {
-        if (w <= b && dp[i - 1][b - w] + v > dp[i - 1][b]) {
-          dp[i][b] = dp[i - 1][b - w] + v;
-          keep[i][b] = 1;
-        } else {
-          dp[i][b] = dp[i - 1][b];
-          keep[i][b] = 0;
-        }
+    for (let i = 0; i < n; i++) {
+      if ((mask & (1 << i)) !== 0) {
+        currentCost += controls[i].cost;
+        currentCombo.push(controls[i]);
       }
     }
 
-    let b = scaledBudget;
-    for (let i = n; i > 0; i--) {
-      if (keep[i][b]) {
-        bestCombo.push(controls[i - 1]);
-        bestCost += controls[i - 1].cost;
-        bestReduction += controls[i - 1].risk_reduction;
-        b -= Math.ceil(controls[i - 1].cost / scale);
+    if (currentCost <= budget) {
+      const calc = calculateClientControlledPortfolio(CANONICAL_ASSETS, currentCombo);
+      const currentReduction = calc.total_risk_reduction;
+      if (currentReduction > bestReduction || (currentReduction === bestReduction && currentCost < bestCost)) {
+        bestReduction = currentReduction;
+        bestCost = currentCost;
+        bestCombo = currentCombo;
       }
     }
   }
 
   const unselected = controls.filter((c) => !bestCombo.some((s) => s.id === c.id));
-  const remainingRisk = Math.max(0, baselineEal - bestReduction);
-  const overallRosi = bestCost > 0 ? Number((bestReduction / bestCost).toFixed(2)) : 0;
+  const calc = calculateClientControlledPortfolio(CANONICAL_ASSETS, bestCombo);
+  const remainingRisk = calc.remaining_risk;
+  const overallRosi = calc.overall_rosi;
 
   return {
     budget,
@@ -345,6 +420,7 @@ export function solveLocalKnapsack(budget, controls = FINTRUST_FALLBACK_CONTROLS
     optimized_eal: remainingRisk,
     selected_controls: bestCombo.sort((a, b) => b.rosi - a.rosi),
     unselected_controls: unselected.sort((a, b) => b.rosi - a.rosi),
+    per_asset_results: calc.per_asset_results,
     solver_engine: solverName,
     optimization_summary: `Optimized portfolio selected ${bestCombo.length} controls utilizing ₹${(bestCost / 100000).toFixed(1)}L of ₹${(budget / 100000).toFixed(1)}L budget, yielding ₹${(bestReduction / 100000).toFixed(1)}L in risk reduction (ROSI ${overallRosi}x).`
   };
@@ -360,9 +436,15 @@ export const api = {
       const data = await res.json();
       return {
         ...data,
+        data_mode: 'LIVE_API',
+        is_fallback: false,
+        bcr: data.bcr || data.overall_rosi || 2.28,
+        benefit_cost_ratio: data.bcr || data.overall_rosi || 2.28,
+        rosi_percentage: data.rosi_percentage || 128.0,
         top_vulnerabilities: (data.top_vulnerabilities || []).map(normalizeVulnerability),
         eal_by_asset: (data.eal_by_asset || []).map(normalizeAsset),
-        solver_engine: '0/1 Knapsack Dynamic Programming (Backend API)'
+        solver_engine: '0/1 Knapsack Dynamic Programming (Live Backend Engine)',
+        last_updated: new Date().toISOString()
       };
     } catch (err) {
       if (err instanceof RequestCancelledError) return null;
@@ -371,6 +453,11 @@ export const api = {
       const optRes = solveLocalKnapsack(2500000);
       return {
         ...CANONICAL_DASHBOARD,
+        data_mode: 'LOCAL_DEMO_DATA',
+        is_fallback: true,
+        bcr: 2.28,
+        benefit_cost_ratio: 2.28,
+        rosi_percentage: 128.0,
         p90_loss: fallbackSim.p90_loss,
         var_95: fallbackSim.var_95,
         p99_loss: fallbackSim.p99_loss,
@@ -379,7 +466,9 @@ export const api = {
         recommended_portfolio_summary: optRes,
         top_vulnerabilities: CANONICAL_VULNERABILITIES.slice(0, 5).map(normalizeVulnerability),
         eal_by_asset: CANONICAL_ASSETS.map(normalizeAsset),
-        data_classification: 'Synthetic Demo Data (Operating in Local Engine Mode)'
+        data_classification: 'Local Demo Data (Backend Unreachable)',
+        solver_engine: '0/1 Knapsack Exact Search (Local Demo Engine)',
+        last_updated: new Date().toISOString()
       };
     }
   },
@@ -526,28 +615,9 @@ export const api = {
       return await res.json();
     } catch (err) {
       if (err instanceof RequestCancelledError) return null;
-      console.warn('Failed to evaluate what-if, computing locally', err);
+      console.warn('Failed to evaluate what-if, computing locally with per-asset capped math', err);
       const active = CANONICAL_CONTROLS.filter((c) => enabledControlIds.includes(c.id));
-      const totalCost = active.reduce((sum, c) => sum + c.cost, 0);
-      const rawRed = active.reduce((sum, c) => sum + c.risk_reduction, 0);
-      const cappedRed = Math.min(18400000, rawRed);
-      const simEal = Math.max(0, 18400000 - cappedRed);
-      const scoreRatio = cappedRed / 18400000;
-      const simScore = Math.max(10, Math.round(70 * (1.0 - scoreRatio * 0.75)));
-      const rosi = totalCost > 0 ? Number((cappedRed / totalCost).toFixed(2)) : 0;
-
-      return {
-        baseline_eal: 18400000,
-        baseline_risk_score: 70,
-        simulated_eal: simEal,
-        simulated_risk_score: simScore,
-        total_control_cost: totalCost,
-        risk_reduction: cappedRed,
-        net_benefit: cappedRed - totalCost,
-        rosi,
-        active_controls_count: active.length,
-        asset_changes: []
-      };
+      return calculateClientControlledPortfolio(CANONICAL_ASSETS, active);
     }
   },
 

@@ -56,6 +56,7 @@ export default function Sidebar({
   isOpen = false,
   onClose,
   isOnline = true,
+  connectionInfo = { state: 'ONLINE' },
 }) {
   // Escape closes the mobile drawer
   useEffect(() => {
@@ -67,85 +68,110 @@ export default function Sidebar({
     return () => window.removeEventListener('keydown', onKey);
   }, [isOpen, onClose]);
 
-  const handleSelect = (id) => {
-    setActiveTab(id);
-    if (onClose) onClose();
-  };
-
-  const getBadge = (item) => {
-    if (item.id === 'assets') return assetCount ? String(assetCount) : '6';
-    if (item.id === 'vulnerabilities') return vulnCount ? String(vulnCount) : '10';
-    return item.badge;
-  };
+  const navItems = [
+    {
+      group: 'Core Quantification',
+      items: [
+        { id: 'dashboard', label: 'CISO Overview', icon: LayoutDashboard, badge: null },
+        { id: 'monte_carlo', label: 'Monte Carlo Simulation', icon: TrendingUp, badge: 'FAIR' },
+        { id: 'optimizer', label: 'Knapsack Optimizer', icon: Coins, badge: 'ROSI' },
+        { id: 'what_if', label: 'What-If Sandbox', icon: Sliders, badge: 'Live' },
+      ]
+    },
+    {
+      group: 'Enterprise Telemetry',
+      items: [
+        { id: 'assets', label: 'Banking Assets', icon: Server, badge: '6' },
+        { id: 'vulnerabilities', label: 'Active CVEs', icon: ShieldAlert, badge: '10' },
+        { id: 'attack_path', label: 'Attack Path Graph', icon: Network, badge: null },
+        { id: 'ingestion', label: 'Live Telemetry Stream', icon: Radio, badge: 'OCSF' },
+      ]
+    },
+    {
+      group: 'Governance & Audit',
+      items: [
+        { id: 'compliance', label: 'Compliance Frameworks', icon: FileCheck2, badge: '100%' },
+      ]
+    }
+  ];
 
   return (
     <>
-      {/* Mobile backdrop */}
+      {/* Mobile overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-40 lg:hidden"
           onClick={onClose}
           aria-hidden="true"
         />
       )}
 
       <aside
-        aria-label="Primary navigation"
-        className={`fixed inset-y-0 left-0 z-50 w-[260px] bg-white border-r border-slate-200 flex flex-col h-full select-none
-          transition-transform duration-300 ease-out lg:translate-x-0 lg:static lg:z-auto
-          ${isOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}`}
+        id="navigation-sidebar"
+        aria-label="Sidebar Navigation"
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 flex flex-col transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${
+          isOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
+        }`}
       >
-        {/* Brand Header */}
-        <div className="px-5 h-16 flex items-center justify-between border-b border-slate-200 shrink-0 bg-white">
-          <div className="flex items-center gap-3">
-            <div className="w-7 h-7 rounded-lg bg-teal-700 flex items-center justify-center text-white shadow-sm">
+        {/* Brand header */}
+        <div className="p-4 border-b border-slate-200 flex items-center justify-between shrink-0 bg-white">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-teal-800 flex items-center justify-center text-white shadow-xs">
               <Shield className="w-4 h-4" />
             </div>
             <div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-sm font-bold tracking-tight text-slate-900">Cyber-Quant</span>
-                <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-teal-50 text-teal-800 border border-teal-200 font-mono font-bold">
-                  PS 26105
+              <div className="font-bold text-slate-900 text-sm tracking-tight flex items-center gap-1">
+                <span>Cyber-Quant</span>
+                <span className="text-[10px] font-mono text-teal-800 px-1 py-0.2 rounded bg-teal-50 border border-teal-200">
+                  v2.0
                 </span>
               </div>
-              <div className="text-[11px] text-slate-600 font-mono">FinTrust Bank Console</div>
+              <div className="text-[10.5px] text-slate-500 font-mono">FinTrust Bank CISO Console</div>
             </div>
           </div>
           <button
             onClick={onClose}
-            aria-label="Close sidebar"
-            className="p-1 rounded-md text-slate-400 hover:text-slate-600 lg:hidden"
+            aria-label="Close navigation sidebar"
+            className="lg:hidden p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Navigation Items */}
-        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6" aria-label="Console Modules">
-          {NAV_GROUPS.map((group) => (
-            <div key={group.label}>
-              <div className="px-2.5 mb-1.5 text-[10.5px] font-mono font-bold uppercase tracking-wider text-slate-500">
-                {group.label}
+        {/* Navigation list */}
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
+          {navItems.map((section) => (
+            <div key={section.group}>
+              <div className="px-3 mb-2 text-[10.5px] font-semibold uppercase tracking-wider text-slate-500 font-mono">
+                {section.group}
               </div>
-              <ul className="space-y-0.5">
-                {group.items.map((item) => {
+              <ul className="space-y-1">
+                {section.items.map((item) => {
                   const Icon = item.icon;
                   const isActive = activeTab === item.id;
+                  const badgeText = item.id === 'assets' ? assetCount : (item.id === 'vulnerabilities' ? vulnCount : item.badge);
                   const count = item.id === 'ingestion' ? liveEventsCount : null;
-                  const badgeText = getBadge(item);
 
                   return (
                     <li key={item.id}>
                       <button
-                        onClick={() => handleSelect(item.id)}
-                        className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition-all ${
+                        onClick={() => {
+                          setActiveTab(item.id);
+                          if (onClose) onClose();
+                        }}
+                        aria-current={isActive ? 'page' : undefined}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors select-none ${
                           isActive
-                            ? 'bg-teal-50 text-teal-900 font-bold shadow-xs border border-teal-200'
-                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 border border-transparent'
+                            ? 'bg-teal-50 text-teal-950 font-semibold border border-teal-200 shadow-xs'
+                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                         }`}
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-teal-700' : 'text-slate-600'}`} />
+                          <Icon
+                            className={`w-4 h-4 shrink-0 ${
+                              isActive ? 'text-teal-700' : 'text-slate-500'
+                            }`}
+                          />
                           <span className="truncate">{item.label}</span>
                         </div>
 
@@ -157,7 +183,7 @@ export default function Sidebar({
                           <span
                             className={`text-[9px] font-mono px-1.5 py-0.5 rounded uppercase font-bold shrink-0 ${
                               isActive
-                                ? 'bg-teal-200 text-teal-900'
+                                ? 'bg-teal-200 text-teal-950'
                                 : 'bg-slate-100 text-slate-500'
                             }`}
                           >
@@ -178,18 +204,42 @@ export default function Sidebar({
           <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 space-y-1.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
-                <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
-                <span className="text-[11px] font-semibold text-slate-700">
-                  {isOnline ? 'Live Risk Engine' : 'Local Simulation'}
+                <span className={`w-2 h-2 rounded-full ${
+                  isOnline 
+                    ? 'bg-emerald-500 animate-pulse' 
+                    : connectionInfo?.state === 'CONNECTING' || connectionInfo?.state === 'BACKEND STARTING'
+                    ? 'bg-amber-500 animate-pulse'
+                    : 'bg-rose-500'
+                }`} />
+                <span className="text-[11px] font-semibold text-slate-800">
+                  {isOnline 
+                    ? 'Live Risk Engine' 
+                    : connectionInfo?.state === 'BACKEND STARTING'
+                    ? 'Backend Starting'
+                    : connectionInfo?.state === 'CONNECTING'
+                    ? 'Connecting...'
+                    : 'Local Demo Engine'}
                 </span>
               </div>
-              <span className={`text-[10px] font-mono font-bold ${isOnline ? 'text-emerald-700' : 'text-amber-700'}`}>
-                {isOnline ? 'Live API' : 'Fallback'}
+              <span className={`text-[10px] font-mono font-bold ${
+                isOnline 
+                  ? 'text-emerald-700' 
+                  : connectionInfo?.state === 'CONNECTING' || connectionInfo?.state === 'BACKEND STARTING'
+                  ? 'text-amber-700'
+                  : 'text-rose-700'
+              }`}>
+                {isOnline 
+                  ? 'Live API' 
+                  : connectionInfo?.state === 'BACKEND STARTING'
+                  ? 'Cold Spin (~30s)'
+                  : connectionInfo?.state === 'CONNECTING'
+                  ? 'Connecting'
+                  : 'API Unavailable'}
               </span>
             </div>
-            <div className="text-[10.5px] text-slate-500 flex items-center gap-1">
+            <div className="text-[10.5px] text-slate-600 flex items-center gap-1">
               <Zap className={`w-3 h-3 ${isOnline ? 'text-teal-600' : 'text-amber-600'}`} />
-              <span>{isOnline ? 'FAIR + Knapsack Active' : 'Offline Precision Engine'}</span>
+              <span>{isOnline ? 'FAIR + Knapsack Active' : 'Demo Mode — Standalone Engine'}</span>
             </div>
           </div>
         </div>

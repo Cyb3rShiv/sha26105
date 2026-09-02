@@ -42,7 +42,7 @@ const ITERATION_PRESETS = [1000, 5000, 10000, 25000, 50000];
 
 function StatTile({ label, value, sub, tone = 'text-slate-900', badge, badgeColor = 'bg-slate-100 text-slate-700' }) {
   return (
-    <div className="panel p-4 flex flex-col justify-between shadow-sm">
+    <div className="panel p-4 flex flex-col justify-between shadow-sm" title={sub}>
       <div>
         <div className="flex items-center justify-between gap-1">
           <span className="text-[11px] font-mono font-semibold uppercase text-slate-500">{label}</span>
@@ -56,7 +56,7 @@ function StatTile({ label, value, sub, tone = 'text-slate-900', badge, badgeColo
           {typeof value === 'number' ? formatINR(value) : value}
         </div>
       </div>
-      {sub && <div className="text-[11px] text-slate-500 font-mono mt-2 pt-2 border-t border-slate-100">{sub}</div>}
+      {sub && <div className="text-[10.5px] text-slate-500 font-mono mt-2 pt-2 border-t border-slate-100 leading-tight">{sub}</div>}
     </div>
   );
 }
@@ -164,7 +164,7 @@ export default function MonteCarloView() {
   const stats = results
     ? [
         { label: 'Mean Annual Loss', value: results.mean_loss, tone: 'text-slate-900', sub: 'Expected average outcome', badge: 'Mean' },
-        { label: 'Median Loss (P50)', value: results.median_loss, tone: 'text-teal-700', sub: '50% of trials fall below', badge: 'P50' },
+        { label: 'Median Loss (P50)', value: results.median_loss, tone: 'text-teal-700', sub: results.median_loss === 0 ? '~59% of trial years incur zero loss events (expected for low-frequency/high-severity banking risk)' : '50% of trials fall below', badge: 'P50' },
         { label: 'P10 Baseline', value: results.p10_loss, tone: 'text-slate-700', sub: 'Low exposure percentile', badge: 'P10' },
         { label: 'P90 Tail Loss', value: results.p90_loss, tone: 'text-amber-700', sub: '90th percentile worst-case', badge: 'P90', badgeColor: 'bg-amber-50 text-amber-800 border-amber-200' },
         { label: 'Value at Risk (95%)', value: results.var_95, tone: 'text-rose-600', sub: '1 in 20 year severe loss', badge: 'VaR 95%', badgeColor: 'bg-rose-50 text-rose-700 border-rose-200' },
@@ -614,7 +614,7 @@ export default function MonteCarloView() {
             bodyClassName="p-0"
           >
             <div className="overflow-x-auto">
-              <table className="data-table">
+              <table className="data-table min-w-[500px]">
                 <thead>
                   <tr>
                     <th>Loss Threshold</th>
@@ -654,7 +654,7 @@ export default function MonteCarloView() {
           bodyClassName="p-0"
         >
           <div className="overflow-x-auto">
-            <table className="data-table">
+            <table className="data-table min-w-[650px]">
               <thead>
                 <tr>
                   <th>Trial Identifier</th>
@@ -671,7 +671,7 @@ export default function MonteCarloView() {
                       {formatINR(scenario.simulated_loss)}
                     </td>
                     <td className="font-mono text-xs text-slate-600">
-                      {scenario.incidents_count} Systems Breached
+                      {scenario.incidents_count} {scenario.incidents_count === 1 ? 'System' : 'Systems'} Breached
                     </td>
                     <td className="text-xs text-slate-600 font-mono">
                       {Array.isArray(scenario.compromised_assets)

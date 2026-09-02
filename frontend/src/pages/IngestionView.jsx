@@ -41,21 +41,41 @@ export default function IngestionView({
         }
       />
 
-      {/* Recalculation banner */}
+      {/* Recalculation banner with directional indicators */}
       {lastSimulatedResponse && (
-        <Reveal className="panel border-teal-200 bg-teal-50/50 p-4 flex items-start gap-3.5">
-          <div className="p-2 rounded-lg bg-teal-100 text-teal-800 border border-teal-200 shrink-0">
+        <Reveal className={`panel p-4 flex items-start gap-3.5 ${
+          lastSimulatedResponse.direction === 'reduced'
+            ? 'border-emerald-200 bg-emerald-50/50'
+            : lastSimulatedResponse.direction === 'increased'
+            ? 'border-rose-200 bg-rose-50/50'
+            : 'border-teal-200 bg-teal-50/50'
+        }`}>
+          <div className={`p-2 rounded-lg border shrink-0 ${
+            lastSimulatedResponse.direction === 'reduced'
+              ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+              : lastSimulatedResponse.direction === 'increased'
+              ? 'bg-rose-100 text-rose-800 border-rose-200'
+              : 'bg-teal-100 text-teal-800 border-teal-200'
+          }`}>
             <Sparkles className="w-4 h-4" />
           </div>
           <div className="flex-1 min-w-0">
             <div className="font-bold text-slate-900 font-mono text-xs flex items-center gap-2">
-              Continuous Risk Recalculation Triggered
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Continuous Risk Recalculation Triggered</span>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-bold ${
+                lastSimulatedResponse.direction === 'reduced'
+                  ? 'bg-emerald-100 text-emerald-800'
+                  : lastSimulatedResponse.direction === 'increased'
+                  ? 'bg-rose-100 text-rose-800'
+                  : 'bg-slate-100 text-slate-800'
+              }`}>
+                {lastSimulatedResponse.direction === 'reduced' ? '↓ RISK MITIGATION' : lastSimulatedResponse.direction === 'increased' ? '↑ THREAT DETECTED' : 'SIGNAL RECORDED'}
+              </span>
             </div>
-            <p className="text-slate-600 mt-1 text-xs leading-relaxed">{lastSimulatedResponse.message}</p>
+            <p className="text-slate-700 mt-1 text-xs leading-relaxed">{lastSimulatedResponse.message}</p>
             <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs font-mono">
               <span className="text-slate-500">
-                Updated Enterprise EAL: <strong className="text-rose-600 font-bold">{formatINR(lastSimulatedResponse.updated_enterprise_eal)}</strong>
+                Updated Enterprise EAL: <strong className={`font-bold ${lastSimulatedResponse.direction === 'reduced' ? 'text-emerald-700' : 'text-rose-600'}`}>{formatINR(lastSimulatedResponse.updated_enterprise_eal)}</strong>
               </span>
               <span className="text-slate-500">
                 Updated Score: <strong className="text-teal-800 font-bold">{lastSimulatedResponse.updated_enterprise_risk_score}/100</strong>

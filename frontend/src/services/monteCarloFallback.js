@@ -46,7 +46,7 @@ export function simulateMonteCarloClient({
     const finalProb = Math.max(0.001, Math.min(0.999, pHorizon));
 
     const medianImpact = Math.max(100000, Number(a.total_financial_impact) || 10000000) * multiplier;
-    const mu = Math.log(medianImpact);
+    const mu = Math.log(medianImpact) - (sigma * sigma) / 2.0;
     return {
       id: a.id,
       name: a.name,

@@ -74,10 +74,10 @@ export default function LandingPage({ onLaunchConsole, dashboardData }) {
   const currentEal = dashboardData?.expected_annual_loss || 18400000;
   const currentRiskScore = dashboardData?.enterprise_risk_score || 70;
   const currentVar95 = dashboardData?.var_95 || 76400000;
-  const totalReduction = dashboardData?.recommended_portfolio_summary?.total_risk_reduction || 5900000;
+  const totalReduction = dashboardData?.recommended_portfolio_summary?.total_risk_reduction || 5700000;
   const optimalSpend = dashboardData?.recommended_portfolio_summary?.total_cost || 2500000;
-  const mitigatablePct = currentEal > 0 ? ((totalReduction / currentEal) * 100).toFixed(1) : '32.1';
-  const overallRosi = dashboardData?.recommended_portfolio_summary?.overall_rosi || 2.36;
+  const mitigatablePct = currentEal > 0 ? ((totalReduction / currentEal) * 100).toFixed(1) : '31.0';
+  const overallRosi = dashboardData?.recommended_portfolio_summary?.overall_rosi || dashboardData?.recommended_portfolio_summary?.rosi || 2.28;
 
   const handleTabKeyDown = (e, currentId) => {
     const tabs = ['overview', 'simulation', 'optimizer'];
@@ -99,6 +99,14 @@ export default function LandingPage({ onLaunchConsole, dashboardData }) {
 
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 font-sans selection:bg-teal-100 selection:text-teal-900 overflow-x-hidden">
+      {/* Skip to Content for WCAG Accessibility */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:px-3 focus:py-2 focus:bg-teal-800 focus:text-white focus:rounded-md text-xs font-semibold shadow-lg"
+      >
+        Skip to main content
+      </a>
+
       {/* ===== STICKY TOP NAVIGATION BAR ===== */}
       <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200/80 transition-all">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2">
@@ -135,6 +143,9 @@ export default function LandingPage({ onLaunchConsole, dashboardData }) {
           </div>
         </div>
       </header>
+
+      {/* ===== MAIN CONTENT LANDMARK ===== */}
+      <main id="main-content">
 
       {/* ===== HERO SECTION ===== */}
       <section className="relative pt-10 pb-14 md:pt-20 md:pb-24 overflow-hidden">
@@ -466,6 +477,8 @@ export default function LandingPage({ onLaunchConsole, dashboardData }) {
           </div>
         </div>
       </section>
+
+      </main>
 
       {/* ===== FOOTER ===== */}
       <footer className="border-t border-slate-200 bg-white py-8 text-xs font-mono text-slate-500">

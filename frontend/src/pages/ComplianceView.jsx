@@ -126,7 +126,7 @@ export default function ComplianceView({ complianceMappings = [] }) {
       <Reveal delay={140}>
         <Panel flush>
           <div className="overflow-x-auto">
-            <table className="data-table">
+            <table className="data-table min-w-[700px]">
               <thead>
                 <tr>
                   <th>Security Control</th>

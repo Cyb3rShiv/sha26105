@@ -367,3 +367,58 @@
   }
 }
 
+/* Print / Board Risk Committee Export Stylesheet */
+@media print {
+  body {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    font-size: 11pt !important;
+  }
+
+  /* Hide navigation, chrome, and interactive simulation controls */
+  aside,
+  header button,
+  header .btn,
+  nav,
+  #navigation-sidebar,
+  .btn,
+  button,
+  input[type="range"] {
+    display: none !important;
+  }
+
+  /* Expand full width for clean printing */
+  .flex-1,
+  main,
+  .panel {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+  }
+
+  /* Ensure data tables print crisply with borders */
+  .data-table {
+    border: 1px solid #cbd5e1 !important;
+  }
+  .data-table th,
+  .data-table td {
+    border-bottom: 1px solid #e2e8f0 !important;
+    color: #0f172a !important;
+  }
+
+  /* Force exact color reproduction */
+  * {
+    color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Prevent page breaks inside critical panels */
+  .panel,
+  tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
+

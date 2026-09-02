@@ -75,8 +75,21 @@ def apply_rate_limit(identifier: str, limit: int = 60, window_secs: float = 60.0
         )
     timestamps.append(now)
     RATE_LIMIT_LOG[identifier] = timestamps
+# Immutable baseline historical trend
+HISTORICAL_MONTHS_BASE = [
+    {"month": "Oct", "risk_score": 58, "eal": 13248000.0},
+    {"month": "Nov", "risk_score": 61, "eal": 13984000.0},
+    {"month": "Dec", "risk_score": 64, "eal": 14904000.0},
+    {"month": "Jan", "risk_score": 63, "eal": 14536000.0},
+    {"month": "Feb", "risk_score": 67, "eal": 16192000.0},
+    {"month": "Mar", "risk_score": 69, "eal": 16928000.0},
+    {"month": "Apr", "risk_score": 70, "eal": 17296000.0},
+    {"month": "May", "risk_score": 71, "eal": 17664000.0},
+    {"month": "Jun", "risk_score": 68, "eal": 16560000.0},
+    {"month": "Jul", "risk_score": 70, "eal": 17480000.0},
+    {"month": "Aug", "risk_score": 70, "eal": 18032000.0},
+]
 
-# Bounded in-memory session store with TTL eviction
 SESSION_TTL_SECONDS = 7200.0  # 2-hour TTL for inactive demo sessions
 SESSION_STORE: Dict[str, Dict[str, Any]] = {}
 
@@ -84,13 +97,13 @@ def evict_expired_sessions():
     now = time.time()
     expired = [
         k for k, v in SESSION_STORE.items()
-        if k != "default_singleton" and (now - v.get("last_accessed", 0)) > SESSION_TTL_SECONDS
+        if k != "default" and (now - v.get("last_accessed", 0)) > SESSION_TTL_SECONDS
     ]
     for k in expired:
         del SESSION_STORE[k]
     if len(SESSION_STORE) > 500:
         sorted_keys = sorted(
-            [k for k in SESSION_STORE if k != "default_singleton"],
+            [k for k in SESSION_STORE if k != "default"],
             key=lambda k: SESSION_STORE[k].get("last_accessed", 0)
         )
         for k in sorted_keys[:len(SESSION_STORE) - 400]:
@@ -110,13 +123,13 @@ def get_initial_state() -> Dict[str, Any]:
     }
 
 def get_session_state(session_id: Optional[str] = None) -> Dict[str, Any]:
-    key = session_id or "default_singleton"
+    key = (session_id or "").strip() or "default"
     now = time.time()
-    if random.random() < 0.1:
+    if random.random() < 0.05:
         evict_expired_sessions()
 
     entry = SESSION_STORE.get(key)
-    if not entry or (key != "default_singleton" and (now - entry.get("last_accessed", 0)) > SESSION_TTL_SECONDS):
+    if not entry or (key != "default" and (now - entry.get("last_accessed", 0)) > SESSION_TTL_SECONDS):
         entry = {
             "state": get_initial_state(),
             "last_accessed": now,
@@ -129,11 +142,11 @@ def get_session_state(session_id: Optional[str] = None) -> Dict[str, Any]:
     return entry["state"]
 
 def get_current_metrics(state: Dict[str, Any]):
-    """Calculates live enterprise risk and EAL across current asset state."""
+    """Calculates live enterprise risk and EAL across current asset state strictly monotonic."""
     assets = state["assets"]
-    total_eal = sum(a["eal"] for a in assets)
-    avg_score = int(round(sum(a["risk_score"] for a in assets) / max(1, len(assets))))
-    return round(total_eal, 2), avg_score
+    total_eal = round(sum(a["eal"] for a in assets), 2)
+    score = RiskEngine.calculate_enterprise_risk_score(total_eal)
+    return total_eal, score
 
 @app.get("/")
 def api_index():
@@ -143,7 +156,7 @@ def api_index():
         "version": "2.0.0",
         "status": "operational",
         "health_endpoint": "/api/health",
-        "docs_endpoint": "/docs"
+        "docs": "/docs"
     }
 
 @app.api_route("/api/health", methods=["GET", "HEAD"])
@@ -157,7 +170,7 @@ def health_check():
     }
 
 @app.get("/api/dashboard")
-def get_dashboard(x_session_id: Optional[str] = Header(None)) -> Dict[str, Any]:
+def get_dashboard(x_session_id: Optional[str] = Header(default=None, alias="x-session-id")) -> Dict[str, Any]:
     """Returns Executive CISO Dashboard data with dynamic simulation-grounded financial risk metrics."""
     state = get_session_state(x_session_id)
     assets = state["assets"]
@@ -174,22 +187,11 @@ def get_dashboard(x_session_id: Optional[str] = Header(None)) -> Dict[str, Any]:
     p99_loss = sim_baseline["p99_loss"]
 
     # Calculate optimal investment for default budget
-    opt_res = InvestmentOptimizer.optimize_security_budget(controls, budget, baseline_eal=total_eal)
+    opt_res = InvestmentOptimizer.optimize_security_budget(controls, budget, baseline_eal=total_eal, assets=assets)
     potential_reduction = opt_res["total_risk_reduction"]
 
-    # 12-Month Risk Trend
-    trend = [
-        {"month": "Oct", "risk_score": 58, "eal": round(total_eal * 0.72, 2)},
-        {"month": "Nov", "risk_score": 61, "eal": round(total_eal * 0.76, 2)},
-        {"month": "Dec", "risk_score": 64, "eal": round(total_eal * 0.81, 2)},
-        {"month": "Jan", "risk_score": 63, "eal": round(total_eal * 0.79, 2)},
-        {"month": "Feb", "risk_score": 67, "eal": round(total_eal * 0.88, 2)},
-        {"month": "Mar", "risk_score": 69, "eal": round(total_eal * 0.92, 2)},
-        {"month": "Apr", "risk_score": 70, "eal": round(total_eal * 0.94, 2)},
-        {"month": "May", "risk_score": 71, "eal": round(total_eal * 0.96, 2)},
-        {"month": "Jun", "risk_score": 68, "eal": round(total_eal * 0.90, 2)},
-        {"month": "Jul", "risk_score": 70, "eal": round(total_eal * 0.95, 2)},
-        {"month": "Aug", "risk_score": 70, "eal": round(total_eal * 0.98, 2)},
+    # 12-Month Risk Trend with frozen immutable historical months
+    trend = [dict(m) for m in HISTORICAL_MONTHS_BASE] + [
         {"month": datetime.now().strftime("%b (Live)"), "risk_score": avg_risk_score, "eal": total_eal}
     ]
 
@@ -341,55 +343,75 @@ def run_monte_carlo(
     return result
 
 @app.post("/api/optimize")
-def optimize_budget(payload: OptimizationRequest, x_session_id: Optional[str] = Header(None)) -> Dict[str, Any]:
-    """Runs 0/1 Knapsack optimization to maximize risk reduction for a given budget."""
+def optimize_budget(request: Request, payload: OptimizationRequest, x_session_id: Optional[str] = Header(default=None, alias="x-session-id")) -> Dict[str, Any]:
+    """Runs 0/1 Knapsack optimization to maximize risk reduction for a given budget under per-asset cap."""
+    client_ip = request.client.host if request.client else "anonymous"
+    apply_rate_limit(f"opt_{client_ip}", limit=30, window_secs=60.0)
+
     if payload.budget < 0:
         raise HTTPException(status_code=422, detail="Budget must be non-negative.")
     state = get_session_state(x_session_id)
     controls = state["controls"]
+    assets = state["assets"]
     total_eal, _ = get_current_metrics(state)
     state["allocated_budget"] = payload.budget
-    return InvestmentOptimizer.optimize_security_budget(controls, payload.budget, baseline_eal=total_eal)
+    return InvestmentOptimizer.optimize_security_budget(controls, payload.budget, baseline_eal=total_eal, assets=assets)
 
 @app.post("/api/what-if")
-def evaluate_what_if(payload: WhatIfRequest, x_session_id: Optional[str] = Header(None)) -> Dict[str, Any]:
-    """Evaluates Before vs After risk metrics for an arbitrary combination of toggled controls."""
+def evaluate_what_if(payload: WhatIfRequest, x_session_id: Optional[str] = Header(default=None, alias="x-session-id")) -> Dict[str, Any]:
+    """Evaluates Before vs After risk metrics using unified per-asset capped model."""
     state = get_session_state(x_session_id)
     controls = state["controls"]
+    
+    # Strictly validate submitted control IDs
+    valid_ids = {c["id"] for c in controls}
+    invalid_ids = [cid for cid in payload.enabled_control_ids if cid not in valid_ids]
+    if invalid_ids:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "invalid_control_ids",
+                "message": f"Unrecognized control IDs: {', '.join(invalid_ids)}",
+                "invalid_ids": invalid_ids
+            }
+        )
+
+    assets = state["assets"]
     total_eal, base_score = get_current_metrics(state)
     return InvestmentOptimizer.evaluate_what_if(
         all_controls=controls,
         enabled_control_ids=payload.enabled_control_ids,
         baseline_eal=total_eal,
-        baseline_risk_score=base_score
+        baseline_risk_score=base_score,
+        assets=assets
     )
 
 @app.get("/api/attack-path")
-def get_attack_path(x_session_id: Optional[str] = Header(None)) -> Dict[str, Any]:
+def get_attack_path(x_session_id: Optional[str] = Header(default=None, alias="x-session-id")) -> Dict[str, Any]:
     """Returns the multi-stage attack graph topology."""
     state = get_session_state(x_session_id)
     return state["attack_path"]
 
 @app.get("/api/compliance")
-def get_compliance(x_session_id: Optional[str] = Header(None)) -> List[Dict[str, Any]]:
+def get_compliance(x_session_id: Optional[str] = Header(default=None, alias="x-session-id")) -> List[Dict[str, Any]]:
     """Returns regulatory framework mappings (ISO 27001, NIST CSF 2.0, RBI, SEBI CSCRF)."""
     state = get_session_state(x_session_id)
     return state["compliance"]
 
 @app.get("/api/events")
-def get_events(x_session_id: Optional[str] = Header(None)) -> List[Dict[str, Any]]:
+def get_events(x_session_id: Optional[str] = Header(default=None, alias="x-session-id")) -> List[Dict[str, Any]]:
     """Returns the continuous telemetry event stream."""
     state = get_session_state(x_session_id)
     return sorted(state["events"], key=lambda x: x["timestamp"], reverse=True)
 
 @app.post("/api/events/simulate")
-def simulate_new_security_event(request: Request, x_session_id: Optional[str] = Header(None)) -> Dict[str, Any]:
+def simulate_new_security_event(request: Request, x_session_id: Optional[str] = Header(default=None, alias="x-session-id")) -> Dict[str, Any]:
     """
     Simulates a new incoming security telemetry event,
     appends to event log with guaranteed unique ID, and updates live asset risk state monotonically.
     """
     client_ip = request.client.host if request.client else "anonymous"
-    apply_rate_limit(f"evt_{client_ip}", limit=50, window_secs=60.0)
+    apply_rate_limit(f"evt_{client_ip}", limit=20, window_secs=60.0)
 
     state = get_session_state(x_session_id)
     pool_event = random.choice(SIMULATION_EVENT_POOL)
@@ -412,14 +434,23 @@ def simulate_new_security_event(request: Request, x_session_id: Optional[str] = 
     }
     state["events"].append(new_event)
 
-    # Dynamically adjust affected asset risk
+    # Measure metrics before event
+    old_eal, old_score = get_current_metrics(state)
+
+    # Dynamically adjust affected asset risk with realistic exposure bounds
     affected_ast = next((a for a in state["assets"] if a["name"] == pool_event["affected_asset"]), None)
     if affected_ast:
         delta_p = pool_event.get("prob_delta", 0.02)
         delta_imp = pool_event.get("impact_delta", 0.0)
         
-        affected_ast["incident_probability"] = min(0.95, max(0.01, round(affected_ast["incident_probability"] + delta_p, 4)))
-        affected_ast["total_financial_impact"] = max(1000000.0, affected_ast["total_financial_impact"] + delta_imp)
+        base_asset = next((a for a in ASSETS_SEED if a["id"] == affected_ast["id"]), affected_ast)
+        max_p = min(0.35, base_asset.get("incident_probability", 0.05) * 2.2)
+        min_p = max(0.01, base_asset.get("incident_probability", 0.05) * 0.4)
+        max_imp = base_asset.get("total_financial_impact", 10000000.0) * 1.5
+        min_imp = base_asset.get("total_financial_impact", 10000000.0) * 0.7
+
+        affected_ast["incident_probability"] = min(max_p, max(min_p, round(affected_ast["incident_probability"] + delta_p, 4)))
+        affected_ast["total_financial_impact"] = min(max_imp, max(min_imp, affected_ast["total_financial_impact"] + delta_imp))
         affected_ast["eal"] = RiskEngine.calculate_eal(affected_ast["incident_probability"], affected_ast["total_financial_impact"])
         affected_ast["risk_score"] = RiskEngine.calculate_risk_score(
             affected_ast["incident_probability"],
@@ -429,24 +460,69 @@ def simulate_new_security_event(request: Request, x_session_id: Optional[str] = 
         affected_ast["priority"] = "P1" if affected_ast["risk_score"] >= 80 else ("P2" if affected_ast["risk_score"] >= 65 else "P3")
 
     total_eal, avg_score = get_current_metrics(state)
+    eal_delta = round(total_eal - old_eal, 2)
+    score_delta = avg_score - old_score
+
+    if eal_delta < 0:
+        direction = "reduced"
+        msg = f"Automated Remediation Ingested ({pool_event['severity']}): ↓ Enterprise risk reduced by ₹{abs(eal_delta)/100000:.1f}L to ₹{total_eal/10000000:.2f} Cr (Score: {avg_score}/100)."
+    elif eal_delta > 0:
+        direction = "increased"
+        msg = f"Threat Telemetry Ingested ({pool_event['severity']}): ↑ Enterprise risk increased by ₹{abs(eal_delta)/100000:.1f}L to ₹{total_eal/10000000:.2f} Cr (Score: {avg_score}/100)."
+    else:
+        direction = "neutral"
+        msg = f"Telemetry Signal Ingested ({pool_event['severity']}): No material risk change (EAL: ₹{total_eal/10000000:.2f} Cr, Score: {avg_score}/100)."
 
     return {
         "status": "success",
         "generated_event": new_event,
+        "direction": direction,
+        "eal_delta": eal_delta,
+        "score_delta": score_delta,
         "updated_enterprise_eal": total_eal,
         "updated_enterprise_risk_score": avg_score,
-        "message": f"New telemetry event ingested ({pool_event['severity']}). Enterprise risk calculated to ₹{total_eal/10000000:.2f} Cr (Score: {avg_score}/100)."
+        "message": msg
     }
 
 @app.post("/api/reset")
-def reset_state(x_session_id: Optional[str] = Header(None)):
-    """Resets runtime state cleanly to default FinTrust Bank baseline."""
-    key = x_session_id or "default_singleton"
-    SESSION_STORE[key] = get_initial_state()
+def reset_state(x_session_id: Optional[str] = Header(default=None, alias="x-session-id")):
+    """Resets runtime state cleanly to default FinTrust Bank baseline for caller session."""
+    key = (x_session_id or "").strip() or "default"
+    now = time.time()
+    SESSION_STORE[key] = {
+        "state": get_initial_state(),
+        "last_accessed": now,
+        "created_at": now
+    }
     return {
         "status": "success",
         "message": "Runtime state successfully restored to FinTrust Bank baseline (EAL ₹1.84 Cr, Score 70)."
     }
+
+@app.exception_handler(404)
+async def custom_404_handler(request: Request, exc):
+    from fastapi.responses import JSONResponse
+    return JSONResponse(
+        status_code=404,
+        content={
+            "error": "Not Found",
+            "message": f"Route '{request.url.path}' was not found on the Cyber-Quant API.",
+            "status": 404
+        }
+    )
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    import logging
+    from fastapi.responses import JSONResponse
+    logging.error(f"Unhandled server exception on {request.method} {request.url.path}: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": "internal_server_error",
+            "message": "Unable to process request. The quantitative risk engine encountered an internal exception."
+        }
+    )
 
 if __name__ == "__main__":
     import uvicorn
