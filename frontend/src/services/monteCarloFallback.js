@@ -1,9 +1,85 @@
 /**
  * High-Precision Client-Side Monte Carlo Loss Simulator.
  * Uses Box-Muller transformation for log-normal loss severity sampling
- * and Bernoulli trial occurrence modeling.
+ * and Bernoulli trial occurrence modeling across FinTrust Bank's canonical asset inventory.
  * Acts as an instant, zero-failure engine when running standalone or offline.
  */
+
+export const FINTRUST_FALLBACK_ASSETS = [
+  {
+    id: "AST-001",
+    name: "Internet-facing Payment Server",
+    short_name: "Payment Server",
+    type: "Transaction Processing Server",
+    criticality: "Critical",
+    exposure: "Internet",
+    incident_probability: 0.180,
+    total_financial_impact: 40000000,
+    eal: 7200000,
+    risk_score: 91
+  },
+  {
+    id: "AST-002",
+    name: "Customer Core Database",
+    short_name: "Core Database",
+    type: "Primary Relational Cluster",
+    criticality: "Critical",
+    exposure: "Internal",
+    incident_probability: 0.110,
+    total_financial_impact: 43636363,
+    eal: 4800000,
+    risk_score: 84
+  },
+  {
+    id: "AST-003",
+    name: "Employee VPN Gateway",
+    short_name: "VPN Gateway",
+    type: "Remote Access Appliance",
+    criticality: "High",
+    exposure: "Internet",
+    incident_probability: 0.090,
+    total_financial_impact: 34444444,
+    eal: 3100000,
+    risk_score: 78
+  },
+  {
+    id: "AST-004",
+    name: "Internet Banking API Gateway",
+    short_name: "API Gateway",
+    type: "API Microservices Gateway",
+    criticality: "High",
+    exposure: "Internet",
+    incident_probability: 0.065,
+    total_financial_impact: 32307692,
+    eal: 2100000,
+    risk_score: 71
+  },
+  {
+    id: "AST-005",
+    name: "Internal Active Directory (Domain Controller)",
+    short_name: "Active Directory",
+    type: "Identity Directory",
+    criticality: "High",
+    exposure: "Internal",
+    incident_probability: 0.040,
+    total_financial_impact: 20000000,
+    eal: 800000,
+    risk_score: 58
+  },
+  {
+    id: "AST-006",
+    name: "Backup & Disaster Recovery Server",
+    short_name: "Backup Server",
+    type: "Immutable Repository",
+    criticality: "Medium",
+    exposure: "Restricted",
+    incident_probability: 0.020,
+    total_financial_impact: 20000000,
+    eal: 400000,
+    risk_score: 38
+  }
+];
+
 export function simulateMonteCarloClient({
   assets = [],
   iterations = 10000,
@@ -20,15 +96,8 @@ export function simulateMonteCarloClient({
   const probMod = Math.max(0.1, Math.min(Number(probabilityModifier) || 1.0, 3.0));
   const horizon = Math.max(1, Math.min(Number(timeHorizonYears) || 1, 5));
 
-  // Default seed assets if none passed
-  const targetAssets = assets.length > 0 ? assets : [
-    { id: "AST-001", name: "Payment Processing Server", incident_probability: 0.18, total_financial_impact: 40000000, exposure: "Internet", criticality: "Critical" },
-    { id: "AST-002", name: "Core Banking Database (CBS)", incident_probability: 0.08, total_financial_impact: 65000000, exposure: "Internal", criticality: "Critical" },
-    { id: "AST-003", name: "SWIFT Transaction Node", incident_probability: 0.05, total_financial_impact: 50000000, exposure: "Restricted", criticality: "Critical" },
-    { id: "AST-004", name: "Internet Banking Web App", incident_probability: 0.14, total_financial_impact: 18000000, exposure: "Internet", criticality: "High" },
-    { id: "AST-005", name: "Active Directory / IAM Core", incident_probability: 0.11, total_financial_impact: 22000000, exposure: "Internal", criticality: "High" },
-    { id: "AST-006", name: "Customer CRM / Document S3", incident_probability: 0.09, total_financial_impact: 15000000, exposure: "Internal", criticality: "Medium" },
-  ];
+  // Default seed assets from FinTrust Bank catalog if none passed
+  const targetAssets = assets && assets.length > 0 ? assets : FINTRUST_FALLBACK_ASSETS;
 
   const totalLosses = new Float64Array(n);
   const assetLossSums = new Float64Array(targetAssets.length);
@@ -131,7 +200,7 @@ export function simulateMonteCarloClient({
     };
   });
 
-  // 25 Histogram Bins
+  // 25 Histogram Bins covering 100% of trials
   const maxView = getPercentile(99.5) || worstCaseLoss || 10000000;
   const binCount = 25;
   const binWidth = maxView / binCount;
@@ -140,11 +209,14 @@ export function simulateMonteCarloClient({
   for (let b = 0; b < binCount; b++) {
     const bMin = b * binWidth;
     const bMax = (b + 1) * binWidth;
-    const count = sortedLosses.filter(l => l >= bMin && (b === binCount - 1 ? l <= bMax : l < bMax)).length;
+    // For the last bin, catch all remaining trials including the extreme fat-tail
+    const count = sortedLosses.filter(l => l >= bMin && (b === binCount - 1 ? true : l < bMax)).length;
     const probPct = Number(((count / n) * 100).toFixed(2));
 
     let label = '';
-    if (bMax >= 10000000) {
+    if (b === binCount - 1) {
+      label = bMin >= 10000000 ? `≥ ₹${(bMin / 10000000).toFixed(1)}Cr (Tail)` : `≥ ₹${(bMin / 100000).toFixed(0)}L (Tail)`;
+    } else if (bMax >= 10000000) {
       label = `₹${(bMin / 10000000).toFixed(1)}Cr - ₹${(bMax / 10000000).toFixed(1)}Cr`;
     } else {
       label = `₹${(bMin / 100000).toFixed(0)}L - ₹${(bMax / 100000).toFixed(0)}L`;
@@ -153,7 +225,7 @@ export function simulateMonteCarloClient({
     distributionBins.push({
       bin_index: b,
       loss_min: Math.round(bMin),
-      loss_max: Math.round(bMax),
+      loss_max: b === binCount - 1 ? Math.round(Math.max(bMax, worstCaseLoss)) : Math.round(bMax),
       label,
       count,
       probability: probPct,
@@ -161,25 +233,25 @@ export function simulateMonteCarloClient({
     });
   }
 
-  // 5 Realistic sample realizations
+  // 5 Realistic sample realizations with FinTrust assets
   const sampleScenarios = [
     {
       scenario_id: "SIM-1001",
       simulated_loss: Math.round(getPercentile(88)),
       incidents_count: 2,
-      compromised_assets: ["Payment Processing Server", "Internet Banking Web App"]
+      compromised_assets: ["Internet-facing Payment Server", "Internet Banking API Gateway"]
     },
     {
       scenario_id: "SIM-1002",
       simulated_loss: Math.round(getPercentile(52)),
       incidents_count: 1,
-      compromised_assets: ["Active Directory / IAM Core"]
+      compromised_assets: ["Internal Active Directory (Domain Controller)"]
     },
     {
       scenario_id: "SIM-1003",
       simulated_loss: Math.round(getPercentile(96)),
-      incidents_count: 3,
-      compromised_assets: ["Payment Processing Server", "Core Banking Database (CBS)", "SWIFT Transaction Node"]
+      incidents_count: 2,
+      compromised_assets: ["Internet-facing Payment Server", "Customer Core Database"]
     },
     {
       scenario_id: "SIM-1004",
@@ -191,13 +263,13 @@ export function simulateMonteCarloClient({
       scenario_id: "SIM-1005",
       simulated_loss: Math.round(getPercentile(72)),
       incidents_count: 1,
-      compromised_assets: ["Customer CRM / Document S3"]
+      compromised_assets: ["Employee VPN Gateway"]
     }
   ];
 
   const varStr = p95Loss >= 10000000 ? `₹${(p95Loss / 10000000).toFixed(2)} Crores` : `₹${(p95Loss / 100000).toFixed(1)} Lakhs`;
   const meanStr = meanLoss >= 10000000 ? `₹${(meanLoss / 10000000).toFixed(2)} Crores` : `₹${(meanLoss / 100000).toFixed(1)} Lakhs`;
-  const topName = topRiskDrivers[0]?.asset_name || "Payment Processing Server";
+  const topName = topRiskDrivers[0]?.asset_name || "Internet-facing Payment Server";
   const topPct = topRiskDrivers[0]?.contribution_pct || 42.0;
 
   const summaryStatement = `In 95% of simulated scenarios over a ${horizon}-year horizon, financial exposure remains below ${varStr} (VaR 95%). Expected average annual loss is ${meanStr}. Primary risk driver is ${topName} contributing ${topPct}% of aggregate loss.`;

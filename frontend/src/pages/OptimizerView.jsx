@@ -9,7 +9,7 @@ import Skeleton from '../components/ui/Skeleton';
 import EmptyState from '../components/ui/EmptyState';
 import CountUp from '../components/ui/CountUp';
 
-const BUDGET_PRESETS = [1000000, 2000000, 2500000, 3500000, 5000000, 7500000];
+const BUDGET_PRESETS = [500000, 1000000, 2000000, 2500000, 3500000, 5000000, 7500000];
 
 function SummaryTile({ label, value, tone = 'text-slate-900', accent = 'bg-slate-400', footer, footerTone = 'text-slate-500', delay = 0 }) {
   return (
@@ -33,9 +33,11 @@ export default function OptimizerView({ onNavigate }) {
   const [loading, setLoading] = useState(false);
   const [optimizationResult, setOptimizationResult] = useState(null);
   const [sortBy, setSortBy] = useState('rosi'); // 'rosi', 'reduction', 'cost'
+  const [error, setError] = useState(null);
 
   const runOptimization = async (customBudget = budget) => {
     setLoading(true);
+    setError(null);
     try {
       const res = await api.optimizeBudget(customBudget);
       if (res) {
@@ -43,6 +45,7 @@ export default function OptimizerView({ onNavigate }) {
       }
     } catch (err) {
       console.error('Optimization failed', err);
+      setError('Failed to compute optimization on backend; using local solver.');
     } finally {
       setLoading(false);
     }
@@ -52,9 +55,16 @@ export default function OptimizerView({ onNavigate }) {
     runOptimization(2500000);
   }, []);
 
+  // Debounced slider handler to avoid request flooding
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      runOptimization(budget);
+    }, 180);
+    return () => clearTimeout(handler);
+  }, [budget]);
+
   const handleBudgetChange = (newBudget) => {
     setBudget(newBudget);
-    runOptimization(newBudget);
   };
 
   const selectedControls = optimizationResult?.selected_controls || [];

@@ -625,17 +625,8 @@ SIMULATION_EVENT_POOL: List[Dict[str, Any]] = [
         "description": "Active in-the-wild zero-day campaign detected targeting financial API endpoints",
         "affected_asset": "Internet Banking API Gateway",
         "event_type": "zero_day_intel",
-        "prob_delta": 0.03,
+        "prob_delta": 0.035,
         "impact_delta": 5000000.0
-    },
-    {
-        "source": "EDR Alert",
-        "severity": "High",
-        "description": "Mimikatz memory dump attempt blocked on Domain Controller (172.16.10.10)",
-        "affected_asset": "Internal Active Directory (Domain Controller)",
-        "event_type": "credential_dumping",
-        "prob_delta": 0.015,
-        "impact_delta": 2000000.0
     },
     {
         "source": "SIEM / Network Flow",
@@ -643,17 +634,35 @@ SIMULATION_EVENT_POOL: List[Dict[str, Any]] = [
         "description": "High-volume encrypted outbound connection detected from Database subnet to anonymous proxy",
         "affected_asset": "Customer Core Database",
         "event_type": "data_exfil_signal",
-        "prob_delta": 0.04,
-        "impact_delta": 8000000.0
+        "prob_delta": 0.040,
+        "impact_delta": 6000000.0
     },
     {
-        "source": "Vulnerability Scanner",
+        "source": "EDR Alert",
         "severity": "High",
-        "description": "Emergency patch applied: CVE-2024-1709 verified as remediated on Payment Server",
+        "description": "Mimikatz memory dump attempt blocked on Domain Controller (172.16.10.10)",
+        "affected_asset": "Internal Active Directory (Domain Controller)",
+        "event_type": "credential_dumping",
+        "prob_delta": 0.020,
+        "impact_delta": 2000000.0
+    },
+    {
+        "source": "IAM / Perimeter",
+        "severity": "Medium",
+        "description": "Anomalous multi-location concurrent logins detected on Employee VPN Gateway",
+        "affected_asset": "Employee VPN Gateway",
+        "event_type": "credential_stuffing",
+        "prob_delta": 0.015,
+        "impact_delta": 1500000.0
+    },
+    {
+        "source": "Security Orchestration (SOAR)",
+        "severity": "Info",
+        "description": "Automated Remediation: Micro-segmentation rule enforced, isolating vulnerable Payment Server port",
         "affected_asset": "Internet-facing Payment Server",
-        "event_type": "patch_verified",
-        "prob_delta": -0.05,
-        "impact_delta": -10000000.0
+        "event_type": "remediation_enforced",
+        "prob_delta": -0.025,
+        "impact_delta": -4000000.0
     }
 ]
 

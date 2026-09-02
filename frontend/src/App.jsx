@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import LandingPage from './pages/LandingPage';
@@ -13,13 +13,27 @@ import ComplianceView from './pages/ComplianceView';
 import IngestionView from './pages/IngestionView';
 import Toast from './components/ui/Toast';
 import CommandPalette from './components/ui/CommandPalette';
-import { api } from './services/api';
+import { api, subscribeConnectivity } from './services/api';
+import { AlertTriangle, WifiOff } from 'lucide-react';
+
+const VALID_TABS = [
+  'dashboard',
+  'assets',
+  'vulnerabilities',
+  'monte_carlo',
+  'optimizer',
+  'what_if',
+  'attack_path',
+  'compliance',
+  'ingestion'
+];
 
 export default function App() {
   const [viewMode, setViewMode] = useState('landing'); // 'landing' | 'app'
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isNavOpen, setIsNavOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [isOnline, setIsOnline] = useState(true);
 
   const [dashboardData, setDashboardData] = useState(null);
   const [assets, setAssets] = useState([]);
@@ -29,6 +43,39 @@ export default function App() {
   const [isSimulating, setIsSimulating] = useState(false);
   const [lastSimulatedResponse, setLastSimulatedResponse] = useState(null);
   const [toastMessage, setToastMessage] = useState(null);
+
+  // Subscribe to backend connectivity state
+  useEffect(() => {
+    return subscribeConnectivity((status) => {
+      setIsOnline(status);
+    });
+  }, []);
+
+  // Hash-based routing & deep linking support
+  const syncRouteFromHash = useCallback(() => {
+    const rawHash = window.location.hash.replace(/^#\/?/, '').trim();
+    if (!rawHash || rawHash === 'overview' || rawHash === 'landing') {
+      setViewMode('landing');
+    } else {
+      const matched = VALID_TABS.find(t => t === rawHash || t === rawHash.replace('-', '_'));
+      if (matched) {
+        setActiveTab(matched);
+        setViewMode('app');
+      } else {
+        setViewMode('landing');
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    syncRouteFromHash();
+    window.addEventListener('hashchange', syncRouteFromHash);
+    window.addEventListener('popstate', syncRouteFromHash);
+    return () => {
+      window.removeEventListener('hashchange', syncRouteFromHash);
+      window.removeEventListener('popstate', syncRouteFromHash);
+    };
+  }, [syncRouteFromHash]);
 
   const fetchGlobalState = async () => {
     try {
@@ -78,6 +125,7 @@ export default function App() {
       }
     } catch (err) {
       console.error('Simulation trigger failed', err);
+      setToastMessage('⚠️ Telemetry simulation failed. Operating on fallback engine.');
     } finally {
       setIsSimulating(false);
     }
@@ -86,12 +134,13 @@ export default function App() {
   const handleReset = async () => {
     try {
       await api.resetState();
-      setToastMessage("🔄 Runtime state successfully reset to default FinTrust Bank baseline.");
+      setToastMessage("🔄 Runtime state successfully reset to default FinTrust Bank baseline (EAL ₹1.84 Cr, Score 70).");
       setLastSimulatedResponse(null);
       await fetchGlobalState();
       setTimeout(() => setToastMessage(null), 5000);
     } catch (err) {
       console.error('Reset failed', err);
+      setToastMessage("⚠️ Reset failed on server; local baseline restored.");
     }
   };
 
@@ -99,21 +148,35 @@ export default function App() {
     setActiveTab(tab);
     setIsNavOpen(false);
     if (viewMode !== 'app') setViewMode('app');
+    window.location.hash = `#${tab}`;
   };
 
   const handleLaunchConsole = (tab = 'dashboard') => {
     setActiveTab(tab);
     setViewMode('app');
+    window.location.hash = `#${tab}`;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleGoToLanding = () => {
+    setViewMode('landing');
+    window.location.hash = '#overview';
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const currentEal = dashboardData?.expected_annual_loss || 18400000;
-  const currentRiskScore = dashboardData?.enterprise_risk_score || 72;
+  const currentRiskScore = dashboardData?.enterprise_risk_score || 70;
 
   // Render full Marketing Landing Page
   if (viewMode === 'landing') {
     return (
       <>
+        {!isOnline && (
+          <div className="bg-amber-600 text-white text-xs font-mono py-1.5 px-4 text-center flex items-center justify-center gap-2">
+            <WifiOff className="w-3.5 h-3.5" />
+            <span>Operating in High-Precision Local Fallback Mode (Backend Reconnecting…)</span>
+          </div>
+        )}
         <LandingPage
           onLaunchConsole={handleLaunchConsole}
           dashboardData={dashboardData}
@@ -143,14 +206,22 @@ export default function App() {
 
       {/* Main content area */}
       <div className="flex-1 flex flex-col min-w-0 bg-[#f8fafc]">
+        {!isOnline && (
+          <div className="bg-amber-600 text-white text-xs font-mono py-1.5 px-4 text-center flex items-center justify-center gap-2 shadow-xs">
+            <WifiOff className="w-3.5 h-3.5" />
+            <span>Operating in Local Engine Mode (Backend Reconnecting / Cold-Start)</span>
+          </div>
+        )}
+
         <Header
           currentEal={currentEal}
           riskScore={currentRiskScore}
           onSimulateEvent={handleSimulateEvent}
           onReset={handleReset}
           isSimulating={isSimulating}
+          isOnline={isOnline}
           onToggleNav={() => setIsNavOpen((v) => !v)}
-          onGoToLanding={() => setViewMode('landing')}
+          onGoToLanding={handleGoToLanding}
           onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
         />
 

@@ -251,8 +251,18 @@ export default function WhatIfView() {
               return (
                 <div
                   key={control.id}
+                  role="switch"
+                  aria-checked={isEnabled}
+                  tabIndex={0}
+                  aria-label={`${control.name} (${control.category}), Cost ${formatINR(control.cost)}, Reduction ${formatINR(control.risk_reduction)}`}
                   onClick={() => toggleControl(control.id)}
-                  className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                  onKeyDown={(e) => {
+                    if (e.key === ' ' || e.key === 'Enter') {
+                      e.preventDefault();
+                      toggleControl(control.id);
+                    }
+                  }}
+                  className={`p-4 rounded-xl border cursor-pointer transition-all focus-visible:outline-2 focus-visible:outline-teal-700 ${
                     isEnabled
                       ? 'bg-emerald-50/50 border-teal-500 shadow-sm'
                       : 'bg-white border-slate-200 hover:border-slate-300 opacity-75'

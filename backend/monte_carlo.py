@@ -125,12 +125,15 @@ class MonteCarloSimulator:
                 "occurrences": exceeded_count
             })
 
-        # 7. Create 25 smooth histogram bins for visualization
+        # 7. Create 25 smooth histogram bins for visualization covering the entire distribution
         max_loss_view = float(np.percentile(total_enterprise_losses, 99.5))
         if max_loss_view <= 0:
             max_loss_view = float(np.max(total_enterprise_losses)) if np.max(total_enterprise_losses) > 0 else 1000000.0
 
         bin_counts, bin_edges = np.histogram(total_enterprise_losses, bins=25, range=(0.0, max_loss_view))
+        # Include extreme tail trials (> max_loss_view) in the final bin so 100% of iterations are accounted for
+        tail_count = int(np.sum(total_enterprise_losses > max_loss_view))
+        bin_counts[-1] += tail_count
         
         distribution_bins = []
         for b_idx in range(len(bin_counts)):
@@ -140,7 +143,12 @@ class MonteCarloSimulator:
             prob_pct = round((count / iterations) * 100, 2)
             
             # Label format in Lakhs or Crores
-            if b_max >= 10000000.0:
+            if b_idx == len(bin_counts) - 1 and tail_count > 0:
+                if b_min >= 10000000.0:
+                    label = f"≥ ₹{b_min/10000000.0:.1f}Cr (Tail)"
+                else:
+                    label = f"≥ ₹{b_min/100000.0:.0f}L (Tail)"
+            elif b_max >= 10000000.0:
                 label = f"₹{b_min/10000000.0:.1f}Cr - ₹{b_max/10000000.0:.1f}Cr"
             else:
                 label = f"₹{b_min/100000.0:.0f}L - ₹{b_max/100000.0:.0f}L"
@@ -148,7 +156,7 @@ class MonteCarloSimulator:
             distribution_bins.append({
                 "bin_index": b_idx,
                 "loss_min": round(b_min, 2),
-                "loss_max": round(b_max, 2),
+                "loss_max": round(b_max if b_idx < len(bin_counts) - 1 else max(b_max, worst_case_loss), 2),
                 "label": label,
                 "count": count,
                 "probability": prob_pct,

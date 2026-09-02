@@ -388,17 +388,22 @@ export function createConstellation(container, { assets = [], reducedMotion = fa
   ro.observe(container);
 
   // ---------- frame loop ----------
-  const clock = new THREE.Clock();
+  let lastTime = typeof performance !== 'undefined' ? performance.now() : Date.now();
+  let elapsedTime = 0;
   let raf = null;
 
   const frame = () => {
     // idle tick while off-screen or tab hidden — no render, no simulation
     if (!visible) {
+      lastTime = typeof performance !== 'undefined' ? performance.now() : Date.now();
       raf = requestAnimationFrame(frame);
       return;
     }
-    const dt = Math.min(clock.getDelta(), 0.05);
-    const t = clock.elapsedTime;
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    const dt = Math.min((now - lastTime) / 1000, 0.05);
+    lastTime = now;
+    elapsedTime += dt;
+    const t = elapsedTime;
 
     if (!dragging) {
       world.rotation.y += 0.055 * dt + spinVel;
@@ -459,7 +464,7 @@ export function createConstellation(container, { assets = [], reducedMotion = fa
   return {
     start() {
       if (!raf && !reducedMotion) {
-        clock.getDelta();
+        lastTime = typeof performance !== 'undefined' ? performance.now() : Date.now();
         raf = requestAnimationFrame(frame);
       }
     },

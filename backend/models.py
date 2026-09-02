@@ -89,7 +89,7 @@ class MonteCarloResult(BaseModel):
     run_timestamp: str
 
 class OptimizationRequest(BaseModel):
-    budget: float
+    budget: float = Field(..., ge=0, description="Security budget in INR (must be non-negative)")
     strategy: Optional[str] = "max_reduction"
 
 class OptimizationResult(BaseModel):

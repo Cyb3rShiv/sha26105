@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://frontend-sigma-liart-70.vercel.app/sitemap.xml

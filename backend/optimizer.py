@@ -122,15 +122,22 @@ class InvestmentOptimizer:
         net_benefit = capped_reduction - total_cost
         rosi = round(capped_reduction / max(1.0, total_cost), 2) if total_cost > 0 else 0.0
 
-        # Asset-specific impact breakdown
+        # Asset-specific impact breakdown with properly apportioned cost & reduction per asset
         asset_impacts = []
         for c in active_controls:
-            for target_ast in c.get("target_asset_ids", []):
+            target_ids = c.get("target_asset_ids", [])
+            num_targets = max(1, len(target_ids))
+            apportioned_cost = round(c["cost"] / num_targets, 2)
+            apportioned_reduction = round(c["risk_reduction"] / num_targets, 2)
+            for target_ast in target_ids:
                 asset_impacts.append({
                     "asset_id": target_ast,
+                    "control_id": c["id"],
                     "applied_control": c["name"],
                     "control_cost": c["cost"],
-                    "control_reduction": c["risk_reduction"]
+                    "apportioned_cost": apportioned_cost,
+                    "control_reduction": c["risk_reduction"],
+                    "apportioned_reduction": apportioned_reduction
                 })
 
         return {

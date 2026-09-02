@@ -3,11 +3,8 @@ import React, { useEffect, useRef } from 'react';
 /**
  * RiskUniverseHeroCanvas — Signature Interactive Visual
  * Simulates uncertainty in real time.
- * Thousands of particles dynamically morph between:
- * 1. Enterprise Risk Constellation (Network nodes & connections)
- * 2. Probability Distribution Curve (Log-normal loss density)
- * 3. Particle Flow Streams (Capital at risk)
- * Responds gracefully to mouse movement and scroll.
+ * Thousands of particles dynamically morph between enterprise assets and stochastic loss fields.
+ * Fully respects prefers-reduced-motion and pauses when tab is hidden.
  */
 export default function RiskUniverseHeroCanvas({ mode = 'constellation' }) {
   const canvasRef = useRef(null);
@@ -19,6 +16,8 @@ export default function RiskUniverseHeroCanvas({ mode = 'constellation' }) {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+
+    const reducedMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     let width = 0;
     let height = 0;
@@ -35,18 +34,18 @@ export default function RiskUniverseHeroCanvas({ mode = 'constellation' }) {
     resize();
     window.addEventListener('resize', resize);
 
-    // Generate 120 particles representing stochastic trials & assets
-    const particleCount = width < 640 ? 60 : 130;
+    // Generate particles representing stochastic trials & assets
+    const particleCount = width < 640 ? 50 : 110;
     const particles = [];
 
-    // 6 Primary Enterprise Cluster Anchors
+    // 6 Primary Enterprise Cluster Anchors (FinTrust Bank)
     const anchors = [
       { xPct: 0.22, yPct: 0.38, name: 'Payment Gateway', color: 'rgba(225, 29, 72, 0.85)', radius: 7 },
       { xPct: 0.48, yPct: 0.28, name: 'Core Banking DB', color: 'rgba(15, 118, 110, 0.9)', radius: 8 },
       { xPct: 0.78, yPct: 0.42, name: 'Active Directory', color: 'rgba(217, 119, 6, 0.85)', radius: 6 },
       { xPct: 0.35, yPct: 0.68, name: 'Web Banking', color: 'rgba(14, 165, 233, 0.85)', radius: 6 },
-      { xPct: 0.65, yPct: 0.72, name: 'SWIFT Node', color: 'rgba(99, 102, 241, 0.85)', radius: 7 },
-      { xPct: 0.86, yPct: 0.22, name: 'Cloud S3 Vault', color: 'rgba(16, 185, 129, 0.85)', radius: 5 },
+      { xPct: 0.65, yPct: 0.72, name: 'API Microservices', color: 'rgba(99, 102, 241, 0.85)', radius: 7 },
+      { xPct: 0.86, yPct: 0.22, name: 'Immutable Backups', color: 'rgba(16, 185, 129, 0.85)', radius: 5 },
     ];
 
     for (let i = 0; i < particleCount; i++) {
@@ -86,8 +85,18 @@ export default function RiskUniverseHeroCanvas({ mode = 'constellation' }) {
     canvas.addEventListener('mouseleave', handleMouseLeave);
 
     let tick = 0;
+    let isPaused = false;
+
+    const onVisibilityChange = () => {
+      isPaused = document.hidden;
+      if (!isPaused && !reducedMotion) {
+        animFrameRef.current = requestAnimationFrame(render);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
 
     const render = () => {
+      if (isPaused) return;
       tick += 0.016;
 
       // Smooth mouse interpolation
@@ -138,101 +147,103 @@ export default function RiskUniverseHeroCanvas({ mode = 'constellation' }) {
 
       // 3. Draw & Animate Particles
       particles.forEach((p, idx) => {
-        // Base drift
-        p.x += p.vx;
-        p.y += p.vy;
+        if (!reducedMotion) {
+          p.x += p.vx;
+          p.y += p.vy;
 
-        const anchor = anchors[p.anchorIndex];
-        const targetX = anchor.xPct * width;
-        const targetY = anchor.yPct * height;
-
-        // Gravitational pull back to anchor
-        p.vx += (targetX - p.x) * 0.0006;
-        p.vy += (targetY - p.y) * 0.0006;
-
-        // Mouse repulsion / attraction
-        if (mouseRef.current.isHovered) {
-          const dx = p.x - mouseRef.current.x;
-          const dy = p.y - mouseRef.current.y;
+          // Tether to anchor
+          const anchor = anchors[p.anchorIndex];
+          const ax = anchor.xPct * width;
+          const ay = anchor.yPct * height;
+          const dx = ax - p.x;
+          const dy = ay - p.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < 140 && dist > 0) {
-            const force = (140 - dist) / 140;
-            p.x += (dx / dist) * force * 2.5;
-            p.y += (dy / dist) * force * 2.5;
+
+          if (dist > 95) {
+            p.vx += (dx / dist) * 0.02;
+            p.vy += (dy / dist) * 0.02;
+          }
+
+          // Interactive cursor reaction
+          if (mouseRef.current.isHovered) {
+            const mx = p.x - mouseRef.current.x;
+            const my = p.y - mouseRef.current.y;
+            const mDist = Math.sqrt(mx * mx + my * my);
+            if (mDist < 120 && mDist > 0) {
+              const force = (120 - mDist) / 120;
+              p.x += (mx / mDist) * force * 1.5;
+              p.y += (my / mDist) * force * 1.5;
+            }
           }
         }
 
-        // Draw particle pulse
-        const pulse = Math.sin(tick * 2 + p.pulseOffset) * 0.3 + 0.7;
-        ctx.fillStyle = anchor.color.replace('0.85', `${p.alpha * pulse}`).replace('0.9', `${p.alpha * pulse}`);
+        const pulse = reducedMotion ? 1 : Math.sin(tick * 3 + p.pulseOffset) * 0.3 + 0.7;
+        ctx.fillStyle = anchors[p.anchorIndex].color.replace('0.85', (p.alpha * pulse).toString()).replace('0.9', (p.alpha * pulse).toString());
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size * pulse, 0, Math.PI * 2);
         ctx.fill();
-
-        // Connect particle to its primary anchor
-        const distToAnchor = Math.hypot(p.x - targetX, p.y - targetY);
-        if (distToAnchor < 95) {
-          ctx.strokeStyle = `rgba(15, 118, 110, ${0.15 * (1 - distToAnchor / 95)})`;
-          ctx.lineWidth = 0.8;
-          ctx.beginPath();
-          ctx.moveTo(p.x, p.y);
-          ctx.lineTo(targetX, targetY);
-          ctx.stroke();
-        }
       });
 
-      // 4. Draw Major Anchor Hubs
-      anchors.forEach((anchor) => {
-        const ax = anchor.xPct * width;
-        const ay = anchor.yPct * height;
+      // 4. Draw Core Anchor Nodes
+      anchors.forEach((a) => {
+        const ax = a.xPct * width;
+        const ay = a.yPct * height;
 
-        // Outer pulse ring
-        const ringPulse = (Math.sin(tick * 2.5) + 1) * 0.5;
-        ctx.strokeStyle = anchor.color.replace('0.85', `${0.35 * (1 - ringPulse)}`).replace('0.9', `${0.35 * (1 - ringPulse)}`);
-        ctx.lineWidth = 1.5;
+        // Outer glow
+        const glowRad = reducedMotion ? a.radius * 2 : a.radius * 2 + Math.sin(tick * 2) * 3;
+        const grad = ctx.createRadialGradient(ax, ay, 0, ax, ay, glowRad);
+        grad.addColorStop(0, a.color.replace('0.85', '0.4').replace('0.9', '0.4'));
+        grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        ctx.fillStyle = grad;
         ctx.beginPath();
-        ctx.arc(ax, ay, anchor.radius + ringPulse * 14, 0, Math.PI * 2);
-        ctx.stroke();
-
-        // Inner solid core
-        ctx.fillStyle = anchor.color;
-        ctx.beginPath();
-        ctx.arc(ax, ay, anchor.radius, 0, Math.PI * 2);
+        ctx.arc(ax, ay, glowRad, 0, Math.PI * 2);
         ctx.fill();
 
-        // Label
-        ctx.font = '10.5px JetBrains Mono, monospace';
-        ctx.fillStyle = '#1e293b';
+        // Inner solid core
+        ctx.fillStyle = a.color;
+        ctx.beginPath();
+        ctx.arc(ax, ay, a.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // Node label
+        ctx.font = '600 10px "JetBrains Mono", monospace';
+        ctx.fillStyle = '#334155';
         ctx.textAlign = 'center';
-        ctx.fillText(anchor.name, ax, ay + anchor.radius + 15);
+        ctx.fillText(a.name, ax, ay + a.radius + 14);
       });
 
-      animFrameRef.current = requestAnimationFrame(render);
+      if (!reducedMotion) {
+        animFrameRef.current = requestAnimationFrame(render);
+      }
     };
 
-    animFrameRef.current = requestAnimationFrame(render);
+    if (reducedMotion) {
+      render();
+    } else {
+      animFrameRef.current = requestAnimationFrame(render);
+    }
 
     return () => {
-      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
       window.removeEventListener('resize', resize);
       canvas.removeEventListener('mousemove', handleMouseMove);
       canvas.removeEventListener('mouseleave', handleMouseLeave);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     };
   }, [mode]);
 
   return (
-    <div className="relative w-full h-[420px] md:h-[500px] rounded-2xl bg-white border border-slate-200/90 shadow-sm overflow-hidden select-none">
+    <div className="relative w-full h-[320px] sm:h-[380px] md:h-[420px] bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden flex items-center justify-center">
       <canvas ref={canvasRef} className="w-full h-full block cursor-crosshair" />
-      <div className="absolute bottom-3 left-4 flex items-center gap-2 pointer-events-none">
-        <span className="w-2 h-2 rounded-full bg-teal-600 animate-pulse" />
-        <span className="text-[10px] font-mono uppercase text-slate-500 font-bold tracking-wider">
-          Live Continuous Risk Mesh • 10,000 Stochastic Scenarios
-        </span>
+      <div className="absolute top-3 left-3 text-[10px] font-mono font-bold text-slate-400 bg-slate-50/90 px-2 py-1 rounded border border-slate-200 pointer-events-none">
+        STOCHASTIC SIMULATION FIELD · 6 ENTERPRISE NODES
       </div>
-      <div className="absolute top-3 right-4 flex items-center gap-2 pointer-events-none">
-        <span className="text-[10px] font-mono text-slate-400">
-          Interactive Particle Constellation
-        </span>
+      <div className="absolute bottom-3 right-3 text-[10px] font-mono text-slate-400 pointer-events-none hidden sm:block">
+        FAIR UNCERTAINTY DENSITY
       </div>
     </div>
   );
