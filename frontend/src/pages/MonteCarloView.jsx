@@ -1,5 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, Play, RefreshCw, Target, Layers, RotateCcw, AlertTriangle } from 'lucide-react';
+import {
+  TrendingUp,
+  Play,
+  RefreshCw,
+  Target,
+  Layers,
+  Sliders,
+  AlertTriangle,
+  CheckCircle2,
+  HelpCircle,
+  BarChart3,
+  ShieldAlert,
+  ArrowRight,
+  Sparkles,
+  GitCompare,
+  Plus,
+  RotateCcw,
+  Check,
+} from 'lucide-react';
 import {
   ResponsiveContainer,
   BarChart,
@@ -9,6 +27,7 @@ import {
   Tooltip,
   CartesianGrid,
   Cell,
+  ReferenceLine,
 } from 'recharts';
 import CurrencyFormatter, { formatINR } from '../components/CurrencyFormatter';
 import { api } from '../services/api';
@@ -16,219 +35,533 @@ import PageHeader from '../components/ui/PageHeader';
 import Panel from '../components/ui/Panel';
 import Reveal from '../components/ui/Reveal';
 import Skeleton from '../components/ui/Skeleton';
-import EmptyState from '../components/ui/EmptyState';
-import CountUp from '../components/ui/CountUp';
 import ChartTooltip from '../components/charts/ChartTooltip';
-import { CHART } from '../components/charts/chartTheme';
+import CountUp from '../components/ui/CountUp';
 
-const ITERATION_PRESETS = [1000, 5000, 10000, 25000];
+const ITERATION_PRESETS = [1000, 5000, 10000, 25000, 50000];
+
+function StatTile({ label, value, sub, tone = 'text-slate-900', badge, badgeColor = 'bg-slate-100 text-slate-700' }) {
+  return (
+    <div className="panel p-4 flex flex-col justify-between shadow-sm">
+      <div>
+        <div className="flex items-center justify-between gap-1">
+          <span className="text-[11px] font-mono font-semibold uppercase text-slate-500">{label}</span>
+          {badge && (
+            <span className={`text-[9.5px] font-mono font-bold px-1.5 py-0.5 rounded border ${badgeColor}`}>
+              {badge}
+            </span>
+          )}
+        </div>
+        <div className={`text-xl font-bold tracking-tight mt-1.5 ${tone}`}>
+          {typeof value === 'number' ? formatINR(value) : value}
+        </div>
+      </div>
+      {sub && <div className="text-[11px] text-slate-500 font-mono mt-2 pt-2 border-t border-slate-100">{sub}</div>}
+    </div>
+  );
+}
 
 export default function MonteCarloView() {
+  // Analytical Parameters
   const [iterations, setIterations] = useState(10000);
+  const [volatilitySigma, setVolatilitySigma] = useState(0.35);
+  const [lossMultiplier, setLossMultiplier] = useState(1.0);
+  const [controlEffectiveness, setControlEffectiveness] = useState(0.0);
+  const [probabilityModifier, setProbabilityModifier] = useState(1.0);
+  const [timeHorizonYears, setTimeHorizonYears] = useState(1);
+
+  // Execution State
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState(null);
+  const [validationError, setValidationError] = useState(null);
 
-  const runSimulation = async (count = iterations) => {
+  // Scenario Comparison State
+  const [baselineResults, setBaselineResults] = useState(null);
+  const [isComparing, setIsComparing] = useState(false);
+
+  const runSimulation = async (
+    count = iterations,
+    sigma = volatilitySigma,
+    mult = lossMultiplier,
+    eff = controlEffectiveness,
+    probMod = probabilityModifier,
+    horizon = timeHorizonYears
+  ) => {
+    // Input Validation
+    if (count < 100 || count > 50000) {
+      setValidationError("Simulation count must be between 100 and 50,000 trials.");
+      return;
+    }
+    if (sigma < 0.1 || sigma > 1.0) {
+      setValidationError("Volatility factor must be between 0.10 and 1.00.");
+      return;
+    }
+    if (mult < 0.1 || mult > 5.0) {
+      setValidationError("Loss magnitude multiplier must be between 0.1x and 5.0x.");
+      return;
+    }
+
+    setValidationError(null);
     setLoading(true);
     try {
-      const data = await api.runMonteCarlo(count);
+      const data = await api.runMonteCarlo({
+        iterations: count,
+        volatility_sigma: sigma,
+        loss_multiplier: mult,
+        control_effectiveness: eff,
+        probability_modifier: probMod,
+        time_horizon_years: horizon,
+      });
       if (data) {
         setResults(data);
+        // Save initial baseline if not set
+        if (!baselineResults) {
+          setBaselineResults(data);
+        }
       }
     } catch (err) {
-      console.error('Failed to run simulation', err);
+      console.error('Failed to run Monte Carlo simulation', err);
+      setValidationError("Simulation engine encountered an issue. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    runSimulation(10000);
+    runSimulation(10000, 0.35, 1.0, 0.0, 1.0, 1);
   }, []);
+
+  const handleSaveAsBaseline = () => {
+    if (results) {
+      setBaselineResults(results);
+      setIsComparing(true);
+    }
+  };
+
+  const handleResetBaseline = () => {
+    setControlEffectiveness(0.0);
+    setLossMultiplier(1.0);
+    setProbabilityModifier(1.0);
+    setTimeHorizonYears(1);
+    setIsComparing(false);
+    runSimulation(iterations, volatilitySigma, 1.0, 0.0, 1.0, 1);
+  };
 
   const stats = results
     ? [
-        { label: 'Mean Annual Loss', value: results.mean_loss, tone: 'text-ink-50', sub: 'Expected baseline', hot: false },
-        { label: 'Median Loss', value: results.median_loss, tone: 'text-brass-300', sub: '50th percentile', hot: false },
-        { label: 'P90 Tail Loss', value: results.p90_loss, tone: 'text-warn-400', sub: '90% worst scenario', hot: true },
-        { label: 'P95 Loss', value: results.p95_loss, tone: 'text-info-400', sub: '95% worst scenario', hot: true },
-        { label: 'VaR (95% Confidence)', value: results.var_95, tone: 'text-danger-400', sub: '1 in 20 year event', hot: true },
-        { label: 'Std. Deviation', value: results.std_dev, tone: 'text-ink-200', sub: 'Loss volatility (σ)', hot: false },
+        { label: 'Mean Annual Loss', value: results.mean_loss, tone: 'text-slate-900', sub: 'Expected average outcome', badge: 'Mean' },
+        { label: 'Median Loss (P50)', value: results.median_loss, tone: 'text-teal-700', sub: '50% of trials fall below', badge: 'P50' },
+        { label: 'P10 Baseline', value: results.p10_loss, tone: 'text-slate-700', sub: 'Low exposure percentile', badge: 'P10' },
+        { label: 'P90 Tail Loss', value: results.p90_loss, tone: 'text-amber-700', sub: '90th percentile worst-case', badge: 'P90', badgeColor: 'bg-amber-50 text-amber-800 border-amber-200' },
+        { label: 'Value at Risk (95%)', value: results.var_95, tone: 'text-rose-600', sub: '1 in 20 year severe loss', badge: 'VaR 95%', badgeColor: 'bg-rose-50 text-rose-700 border-rose-200' },
+        { label: 'P99 Catastrophe', value: results.p99_loss, tone: 'text-rose-800', sub: '1 in 100 year tail loss', badge: 'P99', badgeColor: 'bg-rose-100 text-rose-900 border-rose-300' },
       ]
     : [];
+
+  // Scenario Comparison Metrics
+  const deltaLoss = baselineResults && results ? baselineResults.mean_loss - results.mean_loss : 0;
+  const deltaVaR = baselineResults && results ? baselineResults.var_95 - results.var_95 : 0;
+  const reductionPct = baselineResults && baselineResults.mean_loss > 0 && deltaLoss > 0
+    ? ((deltaLoss / baselineResults.mean_loss) * 100).toFixed(1)
+    : 0;
 
   return (
     <div className="p-6 md:p-8 space-y-6 max-w-[1400px] mx-auto">
       <PageHeader
         icon={TrendingUp}
-        eyebrow="Modeling / Loss Distribution"
+        index="05"
+        eyebrow="Stochastic Loss Modeling"
         title="Monte Carlo Loss Distribution Engine"
-        description="Simulates 10,000 stochastic attack scenarios across FinTrust Bank's assets to quantify tail risk, P90, and Value at Risk (VaR)."
+        description="Executes up to 50,000 stochastic risk trials across enterprise banking assets to quantify probabilistic tail risk, P90 exposure, and 95% Value at Risk (VaR)."
         actions={
-          <>
-            {/* Iteration presets */}
-            <div className="flex items-center bg-ink-900 p-1 rounded-lg border border-ink-800" role="group" aria-label="Iteration count">
-              {ITERATION_PRESETS.map((count) => (
-                <button
-                  key={count}
-                  onClick={() => {
-                    setIterations(count);
-                    runSimulation(count);
-                  }}
-                  disabled={loading}
-                  aria-pressed={iterations === count}
-                  className={`px-2.5 py-1 rounded-md text-[11px] font-mono font-medium transition-colors disabled:opacity-50 ${
-                    iterations === count
-                      ? 'bg-brass-500 text-ink-1000'
-                      : 'text-ink-400 hover:text-ink-100'
-                  }`}
-                >
-                  {count >= 1000 ? `${count / 1000}K` : count}
-                </button>
-              ))}
-            </div>
-            <button onClick={() => runSimulation(iterations)} disabled={loading} className="btn btn-primary">
-              {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-              <span>{loading ? 'Simulating…' : 'Run Simulation'}</span>
-            </button>
-          </>
+          <div className="flex items-center gap-2">
+            {!isComparing ? (
+              <button
+                onClick={handleSaveAsBaseline}
+                disabled={loading || !results}
+                className="btn btn-secondary text-xs shadow-sm"
+              >
+                <GitCompare className="w-3.5 h-3.5 text-teal-700" />
+                <span>Save Baseline &amp; Compare Scenario</span>
+              </button>
+            ) : (
+              <button
+                onClick={handleResetBaseline}
+                className="btn btn-secondary text-xs shadow-sm text-slate-600"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Reset to Clean Baseline</span>
+              </button>
+            )}
+          </div>
         }
       />
 
-      {/* ===== Statistical summary ===== */}
+      {/* ===== STEP 1: CONFIGURE SIMULATION ASSUMPTIONS ===== */}
+      <Reveal>
+        <Panel
+          title="Analytical Simulation Configuration"
+          subtitle="Tune threat likelihoods, impact volatility dispersion, control mitigation factors, and trial volume."
+          icon={Sliders}
+          bodyClassName="p-6"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* 1. Trial Volume Presets */}
+            <div>
+              <label className="text-xs font-mono font-semibold uppercase text-slate-600 block mb-2">
+                Stochastic Trial Iterations
+              </label>
+              <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-lg border border-slate-200">
+                {ITERATION_PRESETS.map((count) => (
+                  <button
+                    key={count}
+                    onClick={() => {
+                      setIterations(count);
+                      runSimulation(count, volatilitySigma, lossMultiplier, controlEffectiveness, probabilityModifier, timeHorizonYears);
+                    }}
+                    disabled={loading}
+                    className={`flex-1 py-1.5 rounded-md text-xs font-mono font-bold transition-all ${
+                      iterations === count
+                        ? 'bg-white text-teal-800 shadow-sm border border-slate-200'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    {count >= 1000 ? `${count / 1000}K` : count}
+                  </button>
+                ))}
+              </div>
+              <div className="text-[10.5px] font-mono text-slate-400 mt-1.5">
+                Higher counts provide tighter tail percentile convergence.
+              </div>
+            </div>
+
+            {/* 2. Control Effectiveness Factor */}
+            <div>
+              <div className="flex justify-between items-center mb-1.5">
+                <label className="text-xs font-mono font-semibold uppercase text-slate-600">
+                  Control Mitigation Factor
+                </label>
+                <span className="text-xs font-mono font-bold text-teal-800">
+                  {(controlEffectiveness * 100).toFixed(0)}% Mitigation
+                </span>
+              </div>
+              <input
+                type="range"
+                min="0.0"
+                max="0.80"
+                step="0.05"
+                value={controlEffectiveness}
+                onChange={(e) => setControlEffectiveness(parseFloat(e.target.value))}
+                className="w-full accent-teal-700 cursor-pointer"
+              />
+              <div className="flex justify-between text-[10px] font-mono text-slate-500 mt-1">
+                <span>0% (Unmitigated)</span>
+                <span>40% (Optimal Portfolio)</span>
+                <span>80% (Max Hardening)</span>
+              </div>
+            </div>
+
+            {/* 3. Volatility Dispersion (Sigma) */}
+            <div>
+              <div className="flex justify-between items-center mb-1.5">
+                <label className="text-xs font-mono font-semibold uppercase text-slate-600">
+                  Loss Volatility (&sigma; dispersion)
+                </label>
+                <span className="text-xs font-mono font-bold text-teal-800">
+                  {volatilitySigma.toFixed(2)}
+                </span>
+              </div>
+              <input
+                type="range"
+                min="0.15"
+                max="0.65"
+                step="0.05"
+                value={volatilitySigma}
+                onChange={(e) => setVolatilitySigma(parseFloat(e.target.value))}
+                className="w-full accent-teal-700 cursor-pointer"
+              />
+              <div className="flex justify-between text-[10px] font-mono text-slate-500 mt-1">
+                <span>0.15 (Tight bounds)</span>
+                <span>0.35 (Empirical Default)</span>
+                <span>0.65 (High Uncertainty)</span>
+              </div>
+            </div>
+
+            {/* 4. Financial Impact Multiplier */}
+            <div>
+              <div className="flex justify-between items-center mb-1.5">
+                <label className="text-xs font-mono font-semibold uppercase text-slate-600">
+                  Loss Severity Multiplier
+                </label>
+                <span className="text-xs font-mono font-bold text-slate-900">
+                  {lossMultiplier.toFixed(2)}x
+                </span>
+              </div>
+              <input
+                type="range"
+                min="0.5"
+                max="2.5"
+                step="0.1"
+                value={lossMultiplier}
+                onChange={(e) => setLossMultiplier(parseFloat(e.target.value))}
+                className="w-full accent-teal-700 cursor-pointer"
+              />
+              <div className="flex justify-between text-[10px] font-mono text-slate-500 mt-1">
+                <span>0.5x (Optimistic)</span>
+                <span>1.0x (Standard)</span>
+                <span>2.5x (Severe Stress)</span>
+              </div>
+            </div>
+
+            {/* 5. Time Horizon */}
+            <div>
+              <label className="text-xs font-mono font-semibold uppercase text-slate-600 block mb-2">
+                Time Horizon
+              </label>
+              <div className="flex items-center gap-2">
+                {[
+                  { label: '1 Year (Annual EAL)', val: 1 },
+                  { label: '3 Years (Strategic)', val: 3 }
+                ].map((h) => (
+                  <button
+                    key={h.val}
+                    onClick={() => setTimeHorizonYears(h.val)}
+                    className={`flex-1 py-2 px-3 rounded-lg text-xs font-mono font-bold border transition-all ${
+                      timeHorizonYears === h.val
+                        ? 'bg-teal-50 border-teal-600 text-teal-900 shadow-sm'
+                        : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                    }`}
+                  >
+                    {h.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 6. Primary Action Trigger */}
+            <div className="flex flex-col justify-end">
+              <button
+                onClick={() => runSimulation(iterations, volatilitySigma, lossMultiplier, controlEffectiveness, probabilityModifier, timeHorizonYears)}
+                disabled={loading}
+                className="btn btn-primary text-xs w-full py-3 shadow-sm justify-center"
+              >
+                {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+                <span>{loading ? `Simulating ${iterations.toLocaleString()} Trials…` : 'Run Monte Carlo Simulation'}</span>
+              </button>
+            </div>
+          </div>
+
+          {validationError && (
+            <div className="mt-4 p-3 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
+              <span>{validationError}</span>
+            </div>
+          )}
+        </Panel>
+      </Reveal>
+
+      {/* ===== STEP 2: SCENARIO COMPARISON BANNER (IF ACTIVE) ===== */}
+      {isComparing && baselineResults && results && (
+        <Reveal>
+          <div className="p-5 rounded-xl bg-teal-50/80 border border-teal-300 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-lg bg-teal-700 text-white shrink-0">
+                <GitCompare className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-sm text-teal-950">Active Comparative Scenario Evaluation</span>
+                  <span className="badge-emerald font-bold">−{reductionPct}% Exposure Shift</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-xs font-mono text-teal-900 mt-1.5">
+                  <span>Baseline Mean: <strong>{formatINR(baselineResults.mean_loss)}</strong></span>
+                  <span>→</span>
+                  <span>Scenario Mean: <strong>{formatINR(results.mean_loss)}</strong></span>
+                  <span>•</span>
+                  <span>Total Exposure Reduction: <strong className="text-teal-700 font-bold">{formatINR(deltaLoss)}</strong></span>
+                </div>
+              </div>
+            </div>
+            <div className="text-right shrink-0">
+              <div className="text-[10.5px] uppercase font-mono text-teal-800 font-semibold">95% VaR Shift</div>
+              <div className="text-lg font-mono font-bold text-teal-900">
+                {formatINR(baselineResults.var_95)} → {formatINR(results.var_95)}
+              </div>
+            </div>
+          </div>
+        </Reveal>
+      )}
+
+      {/* ===== STEP 3: STATISTICAL METRICS LADDER ===== */}
       {results && !loading && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          {stats.map((s, idx) => (
-            <StatTile key={s.label} {...s} delay={idx * 60} />
+          {stats.map((s) => (
+            <StatTile key={s.label} {...s} />
           ))}
         </div>
       )}
       {loading && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3" aria-label="Loading statistics">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="panel p-4 space-y-2.5">
-              <Skeleton className="h-2 w-20" />
-              <Skeleton className="h-6 w-24" />
-              <Skeleton className="h-2 w-16" />
+              <Skeleton className="h-2.5 w-20 bg-slate-200" />
+              <Skeleton className="h-6 w-24 bg-slate-200" />
+              <Skeleton className="h-2.5 w-16 bg-slate-200" />
             </div>
           ))}
         </div>
       )}
 
-      {/* ===== Histogram ===== */}
+      {/* ===== STEP 4: LOSS DISTRIBUTION HISTOGRAM & THRESHOLD MARKERS ===== */}
       <Reveal delay={100}>
         <Panel
-          title={`Loss Exceedance Probability Distribution (${iterations.toLocaleString()} Runs)`}
-          subtitle="Frequency of simulated financial losses across log-normal impact distributions."
+          title={`Loss Exceedance Distribution (${iterations.toLocaleString()} Stochastic Trials)`}
+          subtitle="Relative probability density of enterprise loss modeled via compound Bernoulli-LogNormal processes."
           icon={Layers}
           actions={
-            <div className="hidden sm:flex items-center gap-4 text-[10px] font-mono">
-              <span className="flex items-center gap-1.5 text-ink-300">
-                <span className="w-2.5 h-2.5 rounded-[3px]" style={{ background: CHART.brass }} />
-                Standard Loss
+            <div className="hidden sm:flex items-center gap-4 text-xs font-mono">
+              <span className="flex items-center gap-1.5 text-slate-600">
+                <span className="w-2.5 h-2.5 rounded-sm bg-teal-600" />
+                Standard Loss Range
               </span>
-              <span className="flex items-center gap-1.5 text-danger-300">
-                <span className="w-2.5 h-2.5 rounded-[3px]" style={{ background: CHART.danger }} />
-                P90+ Extreme Tail
+              <span className="flex items-center gap-1.5 text-rose-700 font-bold">
+                <span className="w-2.5 h-2.5 rounded-sm bg-rose-600" />
+                P90+ Extreme Tail Risk
               </span>
             </div>
           }
-          bodyClassName="p-5 pt-4"
+          bodyClassName="p-6 pt-4"
         >
           {results && !loading && (
-            <div className="h-80 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={results.distribution_bins} margin={{ top: 16, right: 16, left: 0, bottom: 30 }}>
-                  <CartesianGrid stroke={CHART.grid} strokeDasharray="2 6" vertical={false} />
-                  <XAxis
-                    dataKey="label"
-                    stroke={CHART.axis}
-                    tick={{ fontSize: 9.5, fontFamily: 'JetBrains Mono' }}
-                    angle={-35}
-                    textAnchor="end"
-                    interval={0}
-                    tickLine={false}
-                    axisLine={{ stroke: CHART.grid }}
-                  />
-                  <YAxis
-                    stroke={CHART.axis}
-                    tick={{ fontSize: 10, fontFamily: 'JetBrains Mono' }}
-                    tickLine={false}
-                    axisLine={false}
-                    width={44}
-                  />
-                  <Tooltip
-                    content={
-                      <ChartTooltip
-                        formatter={(val, name, item) => [`${val} scenarios (${item.payload.probability}% probability)`, 'Frequency']}
-                      />
-                    }
-                    cursor={{ fill: 'rgba(217, 168, 78, 0.05)' }}
-                  />
-                  <Bar dataKey="count" radius={[3, 3, 0, 0]}>
-                    {results.distribution_bins.map((bin, index) => {
-                      const isTail = bin.loss_min >= results.p90_loss * 0.9;
-                      return (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={isTail ? CHART.danger : CHART.brass}
-                          fillOpacity={isTail ? 0.95 : 0.75}
+            <div>
+              <div className="h-80 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={results.distribution_bins} margin={{ top: 16, right: 16, left: 0, bottom: 30 }}>
+                    <CartesianGrid stroke="#f1f5f9" strokeDasharray="3 3" vertical={false} />
+                    <XAxis
+                      dataKey="label"
+                      stroke="#94a3b8"
+                      tick={{ fontSize: 9.5, fontFamily: 'JetBrains Mono' }}
+                      angle={-35}
+                      textAnchor="end"
+                      interval={0}
+                      dy={6}
+                    />
+                    <YAxis
+                      stroke="#94a3b8"
+                      tick={{ fontSize: 10, fontFamily: 'JetBrains Mono' }}
+                      tickFormatter={(v) => `${v}%`}
+                      width={48}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <Tooltip
+                      content={
+                        <ChartTooltip
+                          formatter={(val, name, item) => [
+                            `${val}% probability (${item.payload.count.toLocaleString()} trials in range ${item.payload.label})`,
+                            'Simulation Frequency',
+                          ]}
                         />
-                      );
-                    })}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+                      }
+                      cursor={{ fill: 'rgba(0, 0, 0, 0.02)' }}
+                    />
+                    <Bar dataKey="probability" radius={[3, 3, 0, 0]}>
+                      {results.distribution_bins.map((entry, index) => (
+                        <Cell
+                          key={`bin-${index}`}
+                          fill={entry.is_tail ? '#dc2626' : '#0f766e'}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* ===== "SO WHAT?" ANALYTICAL INSIGHT STATEMENT ===== */}
+              <div className="mt-5 p-4 rounded-xl bg-teal-50 border border-teal-200 text-xs text-teal-950 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-teal-700 shrink-0 mt-0.5" />
+                  <span className="leading-relaxed">
+                    <strong>Executive Interpretation: </strong>
+                    {results.summary_statement}
+                  </span>
+                </div>
+                <span className="text-[11px] font-mono text-teal-700 font-semibold shrink-0">
+                  Computed at {new Date(results.run_timestamp).toLocaleTimeString()}
+                </span>
+              </div>
             </div>
           )}
-          {loading && <Skeleton className="h-80 w-full" />}
         </Panel>
       </Reveal>
 
-      {/* ===== Sample scenarios ===== */}
-      {results && results.sample_scenarios && !loading && (
-        <Reveal delay={160}>
+      {/* ===== STEP 5: WHAT DRIVES THE RESULT? & EXCEEDANCE PROBABILITIES ===== */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* What Drives The Result? (Top Risk Drivers Breakdown) */}
+        <Reveal delay={140} className="lg:col-span-6">
           <Panel
-            title="Sample Scenario Realizations"
-            subtitle="Random trial drill-down — representative outcomes"
-            icon={Target}
+            title="What Drives The Result? (Simulated Asset Contributions)"
+            subtitle="Ranked percentage of aggregate expected annual loss driven by individual enterprise assets."
+            icon={BarChart3}
+            bodyClassName="p-5 space-y-4"
           >
-            <div className="overflow-x-auto -mx-5 -mb-5">
-              <table className="data-table min-w-[640px]">
+            <div className="space-y-3">
+              {results?.top_risk_drivers?.map((driver, idx) => (
+                <div key={driver.asset_id} className="space-y-1">
+                  <div className="flex items-center justify-between text-xs font-mono">
+                    <span className="font-bold text-slate-800 flex items-center gap-2">
+                      <span className="text-slate-400 font-normal">#{idx + 1}</span>
+                      {driver.asset_name}
+                    </span>
+                    <span className="font-bold text-slate-900">
+                      {formatINR(driver.simulated_mean_loss)} ({driver.contribution_pct}%)
+                    </span>
+                  </div>
+                  <div className="h-2 rounded-full bg-slate-100 overflow-hidden border border-slate-200">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        idx === 0 ? 'bg-rose-500' : idx === 1 ? 'bg-amber-500' : 'bg-teal-600'
+                      }`}
+                      style={{ width: `${driver.contribution_pct}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Panel>
+        </Reveal>
+
+        {/* Exceedance Probabilities Table */}
+        <Reveal delay={180} className="lg:col-span-6">
+          <Panel
+            title="Balance-Sheet Threshold Exceedance Probabilities"
+            subtitle="Calculated probability of aggregate losses breaking key corporate solvency barriers."
+            icon={Target}
+            bodyClassName="p-0"
+          >
+            <div className="overflow-x-auto">
+              <table className="data-table">
                 <thead>
                   <tr>
-                    <th>Scenario ID</th>
-                    <th>Breaches Occurred</th>
-                    <th>Compromised Assets</th>
-                    <th>Simulated Enterprise Loss</th>
-                    <th>Severity Category</th>
+                    <th>Loss Threshold</th>
+                    <th>Probability</th>
+                    <th>Simulated Hits</th>
                   </tr>
                 </thead>
-                <tbody className="font-mono">
-                  {results.sample_scenarios.map((scen, idx) => (
-                    <tr key={idx} className="hover:bg-ink-850">
-                      <td className="font-bold text-ink-100">{scen.scenario_id}</td>
-                      <td className="text-brass-300">{scen.incidents_count} Asset(s)</td>
-                      <td className="text-ink-300">{scen.compromised_assets.join(', ')}</td>
-                      <td className="font-bold text-danger-400 text-[13px]">
-                        <CurrencyFormatter value={scen.simulated_loss} />
-                      </td>
+                <tbody>
+                  {results?.exceedance_stats?.map((stat, i) => (
+                    <tr key={i}>
+                      <td className="font-mono font-bold text-slate-900">{stat.threshold_label}</td>
                       <td>
-                        <span
-                          className={`severity-badge ${
-                            scen.simulated_loss >= results.p90_loss
-                              ? 'bg-danger-950 text-danger-300 border border-danger-800'
-                              : scen.simulated_loss >= results.mean_loss
-                                ? 'bg-warn-950 text-warn-300 border border-warn-800'
-                                : 'bg-ok-950 text-ok-300 border border-ok-800'
-                          }`}
-                        >
-                          {scen.simulated_loss >= results.p90_loss
-                            ? 'EXTREME TAIL'
-                            : scen.simulated_loss >= results.mean_loss
-                              ? 'MODERATE BREACH'
-                              : 'CONTAINED'}
+                        <span className={`font-mono font-bold ${
+                          stat.probability_pct > 50 ? 'text-rose-600' : stat.probability_pct > 20 ? 'text-amber-700' : 'text-teal-700'
+                        }`}>
+                          {stat.probability_pct}%
                         </span>
+                      </td>
+                      <td className="font-mono text-slate-500 text-xs">
+                        {stat.occurrences.toLocaleString()} / {iterations.toLocaleString()} trials
                       </td>
                     </tr>
                   ))}
@@ -237,37 +570,48 @@ export default function MonteCarloView() {
             </div>
           </Panel>
         </Reveal>
-      )}
-
-      {/* ===== Engine unreachable (api returned null) ===== */}
-      {!results && !loading && (
-        <Panel>
-          <EmptyState
-            tone="danger"
-            icon={AlertTriangle}
-            title="Simulation engine unreachable"
-            message="The Monte Carlo endpoint did not respond. Verify the risk engine backend is running on port 8000, then retry."
-            action={
-              <button onClick={() => runSimulation(iterations)} className="btn btn-primary">
-                <RotateCcw className="w-3.5 h-3.5" />
-                <span>Retry Simulation</span>
-              </button>
-            }
-          />
-        </Panel>
-      )}
-    </div>
-  );
-}
-
-function StatTile({ label, value, tone, sub, hot, delay }) {
-  return (
-    <Reveal delay={delay} className={`panel p-4 ${hot ? 'border-ink-700' : ''}`}>
-      <span className={`eyebrow ${hot ? 'text-ink-300' : ''}`}>{label}</span>
-      <div className={`text-[17px] font-bold font-mono mt-1.5 ${tone}`}>
-        <CountUp value={value} format={formatINR} />
       </div>
-      <span className="text-[10px] text-ink-500 mt-1 block">{sub}</span>
-    </Reveal>
+
+      {/* ===== STEP 6: REALIZED TRIAL DRILL-DOWN ===== */}
+      <Reveal delay={200}>
+        <Panel
+          title="Stochastic Scenario Realizations (Random Sample Drill-Down)"
+          subtitle="5 individual multi-asset attack realizations sampled directly from the simulation universe."
+          icon={ShieldAlert}
+          bodyClassName="p-0"
+        >
+          <div className="overflow-x-auto">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Trial Identifier</th>
+                  <th>Simulated Financial Loss</th>
+                  <th>Simulated Incidents</th>
+                  <th>Compromised Asset Combination</th>
+                </tr>
+              </thead>
+              <tbody>
+                {results?.sample_scenarios?.map((scenario, i) => (
+                  <tr key={i}>
+                    <td className="font-mono font-bold text-slate-900 text-xs">{scenario.scenario_id}</td>
+                    <td className="font-mono font-bold text-slate-900">
+                      {formatINR(scenario.simulated_loss)}
+                    </td>
+                    <td className="font-mono text-xs text-slate-600">
+                      {scenario.incidents_count} Systems Breached
+                    </td>
+                    <td className="text-xs text-slate-600 font-mono">
+                      {Array.isArray(scenario.compromised_assets)
+                        ? scenario.compromised_assets.join(', ')
+                        : scenario.compromised_assets}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Panel>
+      </Reveal>
+    </div>
   );
 }

@@ -1,4 +1,7 @@
+import { simulateMonteCarloClient } from './monteCarloFallback';
+
 const API_BASE_URL = 'http://127.0.0.1:8000/api';
+
 
 // Fail-safe mock data for resilient offline execution
 const FALLBACK_STATE = {
@@ -68,18 +71,42 @@ export const api = {
     }
   },
 
-  async runMonteCarlo(iterations = 10000) {
+  async runMonteCarlo(params = {}) {
+    const iterations = params.iterations || 10000;
+    const volatilitySigma = params.volatility_sigma !== undefined ? params.volatility_sigma : 0.35;
+    const lossMultiplier = params.loss_multiplier !== undefined ? params.loss_multiplier : 1.0;
+    const controlEffectiveness = params.control_effectiveness !== undefined ? params.control_effectiveness : 0.0;
+    const probabilityModifier = params.probability_modifier !== undefined ? params.probability_modifier : 1.0;
+    const timeHorizonYears = params.time_horizon_years !== undefined ? params.time_horizon_years : 1;
+
+    const query = new URLSearchParams({
+      iterations: iterations.toString(),
+      volatility_sigma: volatilitySigma.toString(),
+      loss_multiplier: lossMultiplier.toString(),
+      control_effectiveness: controlEffectiveness.toString(),
+      probability_modifier: probabilityModifier.toString(),
+      time_horizon_years: timeHorizonYears.toString()
+    });
+
     try {
-      const res = await fetch(`${API_BASE_URL}/simulate?iterations=${iterations}`, {
+      const res = await fetch(`${API_BASE_URL}/simulate?${query.toString()}`, {
         method: 'POST'
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return await res.json();
     } catch (err) {
-      console.warn('Failed to run Monte Carlo', err);
-      return null;
+      console.warn('Backend unavailable, executing resilient client-side Monte Carlo engine', err);
+      return simulateMonteCarloClient({
+        iterations,
+        volatilitySigma,
+        lossMultiplier,
+        controlEffectiveness,
+        probabilityModifier,
+        timeHorizonYears
+      });
     }
   },
+
 
   async optimizeBudget(budget) {
     try {

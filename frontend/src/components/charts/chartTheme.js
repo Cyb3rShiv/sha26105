@@ -1,18 +1,24 @@
 /**
- * Shared hex palette for recharts (SVG attributes need real colors,
- * they can't use Tailwind token classes).
+ * Light-theme hex palette for Recharts
+ * High contrast, restrained semantic colors, subtle slate axes and gridlines.
  */
 export const CHART = {
-  danger: '#e05260',
-  dangerSoft: 'rgba(224, 82, 96, 0.28)',
-  warn: '#e39b3d',
-  ok: '#46a873',
-  brass: '#d9a84e',
-  brassSoft: 'rgba(217, 168, 78, 0.24)',
-  info: '#7a84ea',
-  slate: '#5a6478',
-  grid: '#1e2430',
-  axis: '#7e879b',
-  tooltipBg: '#10141c',
-  tooltipBorder: '#303850',
+  emerald: '#059669',
+  emeraldBright: '#10b981',
+  emeraldSoft: 'rgba(16, 185, 129, 0.12)',
+  danger: '#dc2626',
+  dangerSoft: 'rgba(220, 38, 38, 0.10)',
+  warn: '#d97706',
+  warnSoft: 'rgba(217, 119, 6, 0.12)',
+  ok: '#16a34a',
+  brass: '#0f766e',
+  brassSoft: 'rgba(15, 118, 110, 0.12)',
+  info: '#2563eb',
+  infoSoft: 'rgba(37, 99, 235, 0.12)',
+  cyan: '#0284c7',
+  slate: '#94a3b8',
+  grid: '#e2e8f0',
+  axis: '#64748b',
+  tooltipBg: '#ffffff',
+  tooltipBorder: '#cbd5e1',
 };

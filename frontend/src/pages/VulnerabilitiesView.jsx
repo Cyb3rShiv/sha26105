@@ -7,11 +7,11 @@ import Reveal from '../components/ui/Reveal';
 import EmptyState from '../components/ui/EmptyState';
 
 const DRIVER_ROWS = [
-  { key: 'kev_weight', label: 'CISA KEV Exploit', cls: 'bg-danger-500', text: 'text-danger-400' },
-  { key: 'internet_exposure', label: 'Internet Exposure', cls: 'bg-warn-500', text: 'text-warn-400' },
-  { key: 'weak_mfa', label: 'Weak / Missing MFA', cls: 'bg-warn-400', text: 'text-warn-300' },
-  { key: 'asset_criticality', label: 'Asset Criticality', cls: 'bg-brass-500', text: 'text-brass-300' },
-  { key: 'patch_gap', label: 'Patch Age / Gap', cls: 'bg-info-500', text: 'text-info-400' },
+  { key: 'kev_weight', label: 'CISA KEV Exploit', cls: 'bg-rose-500', text: 'text-rose-700' },
+  { key: 'internet_exposure', label: 'Internet Exposure', cls: 'bg-amber-500', text: 'text-amber-800' },
+  { key: 'weak_mfa', label: 'Weak / Missing MFA', cls: 'bg-amber-400', text: 'text-amber-700' },
+  { key: 'asset_criticality', label: 'Asset Criticality', cls: 'bg-teal-600', text: 'text-teal-800' },
+  { key: 'patch_gap', label: 'Patch Age / Gap', cls: 'bg-blue-500', text: 'text-blue-700' },
 ];
 
 export default function VulnerabilitiesView({ vulnerabilities = [], onNavigate }) {
@@ -32,16 +32,17 @@ export default function VulnerabilitiesView({ vulnerabilities = [], onNavigate }
     <div className="p-6 md:p-8 space-y-6 max-w-[1400px] mx-auto">
       <PageHeader
         icon={ShieldAlert}
-        eyebrow="Exposure / Threat Signals"
-        title="Vulnerabilities & Threat Signals"
-        description="Active CVEs correlated with CISA KEV threat intelligence and explainable risk driver weights."
+        index="03"
+        eyebrow="Exposure & Threat Signals"
+        title="Vulnerabilities & Exploit Signals"
+        description="Active CVE catalog mapped directly to CISA Known Exploited Vulnerabilities (KEV) and multi-factor risk driver weights."
         actions={
           <div className="flex items-center gap-2">
-            <span className="chip border-danger-800 bg-danger-950 text-danger-300">
-              <span className="w-1.5 h-1.5 rounded-full bg-danger-500" />
+            <span className="badge-rose font-bold">
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
               {kevCount} ACTIVE KEV
             </span>
-            <span className="chip">{vulnerabilities.length} TOTAL CVES</span>
+            <span className="badge-slate font-bold">{vulnerabilities.length} TOTAL CVES</span>
           </div>
         }
       />
@@ -49,28 +50,28 @@ export default function VulnerabilitiesView({ vulnerabilities = [], onNavigate }
       {/* Search & KEV filter */}
       <Reveal delay={60} className="flex flex-col sm:flex-row sm:items-center gap-3">
         <div className="relative flex-1 max-w-xs">
-          <Search className="w-3.5 h-3.5 text-ink-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             aria-label="Search vulnerabilities"
-            placeholder="Search CVE ID or name…"
+            placeholder="Search CVE ID, title, keyword…"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="input pl-9 w-full"
+            className="w-full pl-9 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 placeholder:text-slate-400 focus:outline-teal-700 shadow-sm"
           />
         </div>
         <select
           aria-label="Filter by KEV status"
           value={filterKev}
           onChange={(e) => setFilterKev(e.target.value)}
-          className="select"
+          className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 font-mono focus:outline-teal-700 shadow-sm"
         >
-          <option value="ALL">All CVEs</option>
-          <option value="KEV">Active KEV Only</option>
+          <option value="ALL">All Vulnerabilities</option>
+          <option value="KEV">Active KEV Exploits Only</option>
           <option value="NON_KEV">Standard CVEs</option>
         </select>
-        <span className="text-[11px] font-mono text-ink-500 sm:ml-auto">
-          {filtered.length} shown
+        <span className="text-xs font-mono text-slate-500 sm:ml-auto">
+          {filtered.length} of {vulnerabilities.length} Shown
         </span>
       </Reveal>
 
@@ -87,60 +88,61 @@ export default function VulnerabilitiesView({ vulnerabilities = [], onNavigate }
           };
 
           return (
-            <Reveal key={vuln.cve_id} delay={Math.min(idx * 60, 360)}>
+            <Reveal key={vuln.cve_id} delay={Math.min(idx * 40, 240)}>
               <div
                 className={`panel panel-hover h-full flex flex-col justify-between relative overflow-hidden ${
-                  isPrimary ? 'border-danger-800' : ''
+                  isPrimary ? 'border-rose-300 bg-rose-50/20' : ''
                 }`}
               >
-                {isPrimary && <span className="absolute left-0 top-0 bottom-0 w-[3px] bg-danger-500" />}
+                {isPrimary && <span className="absolute left-0 top-0 bottom-0 w-[3px] bg-rose-500" />}
 
                 <div className="p-5 pb-0">
                   <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
+                    <div>
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-mono font-bold text-[13px] text-ink-50">{vuln.cve_id}</span>
-                        <RiskBadge level={vuln.severity} />
-                        {vuln.is_kev && <RiskBadge isKev={true} />}
+                        <span className="font-mono text-sm font-bold text-slate-900">{vuln.cve_id}</span>
+                        <RiskBadge level={vuln.severity} isKev={vuln.is_kev} />
                       </div>
-                      <h3 className="text-xs font-semibold text-ink-200 mt-1.5">{vuln.title}</h3>
+                      <h2 className="text-sm font-bold text-slate-900 mt-1">{vuln.title}</h2>
                     </div>
-                    <div className="text-right whitespace-nowrap shrink-0">
-                      <span className="text-[13px] font-mono font-bold text-danger-400">CVSS {vuln.cvss_score}</span>
-                      <div className="text-[10px] text-ink-500 font-mono mt-0.5">
-                        EPSS: {(vuln.epss_score * 100).toFixed(0)}% Exploit Prob.
+                    <div className="text-right shrink-0">
+                      <div className="text-xs font-mono uppercase text-slate-400 font-semibold">CVSS Score</div>
+                      <div className="text-lg font-bold font-mono text-rose-600 leading-none mt-1">
+                        {vuln.cvss_score || vuln.cvss}
                       </div>
                     </div>
                   </div>
 
-                  <p className="text-xs text-ink-400 mt-2.5 leading-relaxed line-clamp-2">{vuln.description}</p>
+                  <p className="text-xs text-slate-600 mt-2.5 leading-relaxed">{vuln.description}</p>
+
+                  <div className="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-2 text-[11px] font-mono text-slate-500">
+                    <span>Attack Vector: <strong className="text-slate-800">{vuln.attack_vector || 'Network'}</strong></span>
+                    <span>•</span>
+                    <span>EPSS Score: <strong className="text-slate-800">{((vuln.epss_score || 0.85) * 100).toFixed(0)}%</strong></span>
+                  </div>
                 </div>
 
-                {/* Explainable driver weights */}
-                <div className="p-5">
-                  <div className="tile p-3.5 space-y-2.5">
-                    <span className="eyebrow text-brass-400 block">Explainable Risk Driver Weights</span>
-                    {DRIVER_ROWS.map((row) => (
-                      <div key={row.key} className="flex items-center gap-2 text-[11px] font-mono">
-                        <span className="text-ink-400 w-36 shrink-0">{row.label}:</span>
-                        <div className="flex-1 meter !h-1.5">
-                          <span className={row.cls} style={{ width: `${weights[row.key]}%`, animationDelay: `${idx * 60}ms` }} />
-                        </div>
-                        <span className={`${row.text} text-[10px] font-bold w-8 text-right`}>{weights[row.key]}%</span>
-                      </div>
-                    ))}
+                {/* Risk driver weights meter */}
+                <div className="p-5 pt-4">
+                  <div className="text-[10.5px] font-mono uppercase text-slate-400 font-semibold mb-2">
+                    Multi-Factor Risk Contribution Weights
                   </div>
-
-                  <div className="mt-4 pt-3.5 border-t border-ink-800 flex items-center justify-between gap-3">
-                    <span className="text-[11px] text-ink-400 font-mono min-w-0 truncate">
-                      Affected: <strong className="text-ink-200">{vuln.affected_asset_ids?.join(', ')}</strong>
-                    </span>
-                    <button
-                      onClick={() => onNavigate('optimizer')}
-                      className="text-brass-400 hover:text-brass-300 font-mono flex items-center gap-1 text-[11px] shrink-0"
-                    >
-                      Remediate in Optimizer <ArrowRight className="w-3 h-3" />
-                    </button>
+                  <div className="space-y-1.5">
+                    {DRIVER_ROWS.map((d) => {
+                      const val = weights[d.key] || 75;
+                      return (
+                        <div key={d.key} className="flex items-center gap-3 text-[11px] font-mono">
+                          <span className="w-36 text-slate-600 truncate">{d.label}</span>
+                          <div className="flex-1 bg-slate-100 rounded-full h-1.5 overflow-hidden border border-slate-200">
+                            <div
+                              className={`h-full rounded-full ${d.cls}`}
+                              style={{ width: `${val}%` }}
+                            />
+                          </div>
+                          <span className={`w-9 text-right font-bold ${d.text}`}>{val}%</span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -153,17 +155,17 @@ export default function VulnerabilitiesView({ vulnerabilities = [], onNavigate }
         <Panel>
           <EmptyState
             icon={Inbox}
-            title="No vulnerabilities match your filters"
-            message="Adjust the search term or KEV filter to see correlated CVEs and their risk driver weights."
+            title="No vulnerabilities found"
+            message="Try searching for a different CVE identifier or clearing the filter."
             action={
               <button
                 onClick={() => {
                   setSearchTerm('');
                   setFilterKev('ALL');
                 }}
-                className="btn btn-ghost"
+                className="btn btn-secondary text-xs"
               >
-                Clear filters
+                Reset filters
               </button>
             }
           />

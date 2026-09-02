@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
+import LandingPage from './pages/LandingPage';
 import DashboardView from './pages/DashboardView';
 import AssetsView from './pages/AssetsView';
 import VulnerabilitiesView from './pages/VulnerabilitiesView';
@@ -11,11 +12,15 @@ import AttackPathView from './pages/AttackPathView';
 import ComplianceView from './pages/ComplianceView';
 import IngestionView from './pages/IngestionView';
 import Toast from './components/ui/Toast';
+import CommandPalette from './components/ui/CommandPalette';
 import { api } from './services/api';
 
 export default function App() {
+  const [viewMode, setViewMode] = useState('landing'); // 'landing' | 'app'
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isNavOpen, setIsNavOpen] = useState(false);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+
   const [dashboardData, setDashboardData] = useState(null);
   const [assets, setAssets] = useState([]);
   const [vulnerabilities, setVulnerabilities] = useState([]);
@@ -47,6 +52,18 @@ export default function App() {
 
   useEffect(() => {
     fetchGlobalState();
+  }, []);
+
+  // Keyboard shortcut for Command Palette (Ctrl+K or Cmd+K)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsCommandPaletteOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   const handleSimulateEvent = async () => {
@@ -81,14 +98,41 @@ export default function App() {
   const navigate = (tab) => {
     setActiveTab(tab);
     setIsNavOpen(false);
+    if (viewMode !== 'app') setViewMode('app');
+  };
+
+  const handleLaunchConsole = (tab = 'dashboard') => {
+    setActiveTab(tab);
+    setViewMode('app');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const currentEal = dashboardData?.expected_annual_loss || 18400000;
   const currentRiskScore = dashboardData?.enterprise_risk_score || 72;
 
+  // Render full Marketing Landing Page
+  if (viewMode === 'landing') {
+    return (
+      <>
+        <LandingPage
+          onLaunchConsole={handleLaunchConsole}
+          dashboardData={dashboardData}
+        />
+        <CommandPalette
+          open={isCommandPaletteOpen}
+          onClose={() => setIsCommandPaletteOpen(false)}
+          onNavigate={(tab) => {
+            handleLaunchConsole(tab);
+          }}
+        />
+      </>
+    );
+  }
+
+  // Render Authenticated Console / Application
   return (
-    <div className="flex min-h-screen bg-ink-1000 text-ink-50">
-      {/* Left sidebar navigation (off-canvas drawer on mobile) */}
+    <div className="flex min-h-screen bg-[#f8fafc] text-slate-900 font-sans">
+      {/* Left sidebar navigation */}
       <Sidebar
         activeTab={activeTab}
         setActiveTab={navigate}
@@ -98,7 +142,7 @@ export default function App() {
       />
 
       {/* Main content area */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 bg-[#f8fafc]">
         <Header
           currentEal={currentEal}
           riskScore={currentRiskScore}
@@ -106,12 +150,21 @@ export default function App() {
           onReset={handleReset}
           isSimulating={isSimulating}
           onToggleNav={() => setIsNavOpen((v) => !v)}
+          onGoToLanding={() => setViewMode('landing')}
+          onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+        />
+
+        {/* Global command palette */}
+        <CommandPalette
+          open={isCommandPaletteOpen}
+          onClose={() => setIsCommandPaletteOpen(false)}
+          onNavigate={navigate}
         />
 
         {/* Global toast notification */}
         {toastMessage && <Toast message={toastMessage} onClose={() => setToastMessage(null)} />}
 
-        {/* key re-mounts the page so entrance reveals replay on navigation */}
+        {/* Main View Area */}
         <main key={activeTab} className="flex-1 pb-16">
           {activeTab === 'dashboard' && (
             <DashboardView

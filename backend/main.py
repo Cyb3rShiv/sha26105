@@ -189,10 +189,27 @@ def get_controls() -> List[Dict[str, Any]]:
     return sorted(RUNTIME_STATE["controls"], key=lambda x: x["rosi"], reverse=True)
 
 @app.post("/api/simulate")
-def run_monte_carlo(iterations: int = Query(10000, ge=1000, le=50000)) -> Dict[str, Any]:
+def run_monte_carlo(
+    iterations: int = Query(10000, ge=100, le=50000),
+    volatility_sigma: float = Query(0.35, ge=0.1, le=1.0),
+    loss_multiplier: float = Query(1.0, ge=0.1, le=5.0),
+    control_effectiveness: float = Query(0.0, ge=0.0, le=0.95),
+    probability_modifier: float = Query(1.0, ge=0.1, le=3.0),
+    time_horizon_years: int = Query(1, ge=1, le=5),
+    random_seed: Optional[int] = Query(None)
+) -> Dict[str, Any]:
     """Executes high-speed NumPy Monte Carlo loss simulation."""
     assets = RUNTIME_STATE["assets"]
-    result = MonteCarloSimulator.run_simulation(assets=assets, iterations=iterations)
+    result = MonteCarloSimulator.run_simulation(
+        assets=assets,
+        iterations=iterations,
+        volatility_sigma=volatility_sigma,
+        loss_multiplier=loss_multiplier,
+        control_effectiveness=control_effectiveness,
+        probability_modifier=probability_modifier,
+        time_horizon_years=time_horizon_years,
+        random_seed=random_seed
+    )
     RUNTIME_STATE["monte_carlo_cache"] = result
     return result
 

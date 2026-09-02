@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sliders, ArrowRight, ShieldCheck, Check, Layers, RotateCcw, AlertTriangle } from 'lucide-react';
+import { Sliders, ArrowRight, ShieldCheck, Check, Layers, RotateCcw, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import CurrencyFormatter, { formatINR } from '../components/CurrencyFormatter';
 import { api } from '../services/api';
 import PageHeader from '../components/ui/PageHeader';
@@ -10,9 +10,9 @@ import EmptyState from '../components/ui/EmptyState';
 import CountUp from '../components/ui/CountUp';
 
 const PRESETS = [
-  { type: 'patch_mfa', label: 'Patch + MFA (Primary)', cls: 'btn-ghost' },
-  { type: 'budget25', label: 'Optimal ₹25L Portfolio', cls: 'btn-ok' },
-  { type: 'all', label: 'All Controls (100%)', cls: 'btn-ghost' },
+  { type: 'patch_mfa', label: 'Patch + MFA (Primary)', isPrimary: false },
+  { type: 'budget25', label: 'Optimal ₹25L Portfolio', isPrimary: true },
+  { type: 'all', label: 'All Controls (100%)', isPrimary: false },
 ];
 
 export default function WhatIfView() {
@@ -79,14 +79,21 @@ export default function WhatIfView() {
     <div className="p-6 md:p-8 space-y-6 max-w-[1400px] mx-auto">
       <PageHeader
         icon={Sliders}
-        eyebrow="Modeling / Scenario Sandbox"
+        index="06"
+        eyebrow="Scenario Modeling & Sandbox"
         title="What-If Security Control Simulator"
-        description="Toggle security investments in real-time to simulate instantaneous changes in Enterprise Risk Score, EAL, and ROSI."
+        description="Interactively toggle hypothetical security controls in real-time to preview before-and-after reductions in Risk Score, EAL, and ROSI before spending capital."
         actions={
           <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Quick scenarios">
-            <span className="text-[10px] font-mono text-ink-500 mr-1 hidden lg:inline">QUICK SCENARIOS:</span>
+            <span className="text-[10.5px] font-mono text-slate-500 uppercase font-semibold mr-1 hidden lg:inline">Quick Scenarios:</span>
             {PRESETS.map((p) => (
-              <button key={p.type} onClick={() => selectPreset(p.type)} className={`btn !py-1.5 !px-2.5 text-[11px] font-mono ${p.cls}`}>
+              <button
+                key={p.type}
+                onClick={() => selectPreset(p.type)}
+                className={`btn !py-1.5 !px-3 text-xs font-mono font-bold ${
+                  p.isPrimary ? 'btn-primary shadow-sm' : 'btn-secondary'
+                }`}
+              >
                 {p.label}
               </button>
             ))}
@@ -94,232 +101,201 @@ export default function WhatIfView() {
         }
       />
 
-      {/* ===== Before / Delta / After ===== */}
+      {/* ===== Before / Delta / After Comparison Row ===== */}
       {simulationResult && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 items-stretch">
-          {/* BEFORE */}
+          {/* BEFORE: Baseline */}
           <Reveal className="lg:col-span-4">
-            <div className="panel h-full border-danger-900/80 p-6 flex flex-col justify-between">
+            <div className="panel h-full border-rose-200 bg-rose-50/30 p-6 flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between gap-2">
-                  <span className="eyebrow text-danger-400">Before — Baseline Risk</span>
-                  <span className="chip border-danger-800 bg-danger-950 text-danger-300">UNMITIGATED</span>
+                  <span className="text-xs font-mono font-bold uppercase text-rose-700">Before — Baseline Posture</span>
+                  <span className="badge-rose">UNMITIGATED</span>
                 </div>
 
-                <div className="mt-6 space-y-5">
+                <div className="mt-6 space-y-4">
                   <div>
-                    <span className="text-[11px] text-ink-400 font-mono">ENTERPRISE RISK SCORE</span>
-                    <div className="display-num text-[38px] leading-none text-danger-400 mt-1.5">
+                    <span className="text-xs text-slate-500 font-mono">ENTERPRISE RISK SCORE</span>
+                    <div className="text-3xl sm:text-4xl font-bold tracking-tight text-rose-600 mt-1">
                       {simulationResult.baseline_risk_score}
-                      <span className="text-sm text-ink-500 font-sans font-normal"> / 100</span>
+                      <span className="text-sm text-slate-400 font-normal"> / 100</span>
                     </div>
                   </div>
 
                   <div>
-                    <span className="text-[11px] text-ink-400 font-mono">EXPECTED ANNUAL LOSS</span>
-                    <div className="text-[22px] font-mono font-bold text-ink-50 mt-1">
+                    <span className="text-xs text-slate-500 font-mono">EXPECTED ANNUAL LOSS</span>
+                    <div className="text-xl sm:text-2xl font-mono font-bold text-slate-900 mt-1">
                       <CountUp value={simulationResult.baseline_eal} format={formatINR} />
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="mt-6 pt-4 border-t border-ink-800 text-[11px] text-ink-400 font-mono leading-relaxed">
-                Includes unpatched KEV CVE-2024-3094 on Payment Server.
+              <div className="mt-6 pt-4 border-t border-rose-100 text-[11px] text-slate-500 font-mono">
+                Baseline exposure with unpatched KEV vulnerabilities and single-factor MFA gaps.
               </div>
             </div>
           </Reveal>
 
-          {/* DELTA */}
+          {/* DELTA: Simulation Shift */}
           <Reveal delay={80} className="lg:col-span-4">
-            <div className="panel h-full border-brass-900/80 p-6 flex flex-col justify-between">
+            <div className="panel h-full border-slate-200 bg-slate-50/60 p-6 flex flex-col justify-between">
               <div>
-                <span className="eyebrow text-brass-400 flex items-center gap-2">
-                  <ArrowRight className="w-3.5 h-3.5" />
-                  Simulation Delta &amp; ROSI
-                </span>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-mono font-bold uppercase text-teal-800 flex items-center gap-1.5">
+                    <ArrowRight className="w-3.5 h-3.5" />
+                    Simulation Delta &amp; ROSI
+                  </span>
+                  <span className="badge-emerald font-mono">−{mitigatedPct}% Exposure</span>
+                </div>
 
-                {/* Proportional EAL shift bar */}
-                <div className="mt-6 space-y-2" aria-hidden="true">
-                  <div className="flex justify-between text-[9.5px] font-mono text-ink-500">
-                    <span>EXPOSURE SHIFT</span>
-                    <span className="text-ok-400">−{mitigatedPct}%</span>
-                  </div>
-                  <div className="h-3 rounded-md bg-danger-950 border border-danger-900 relative overflow-hidden">
+                {/* Progress bar comparison */}
+                <div className="mt-5 space-y-1.5" aria-hidden="true">
+                  <div className="h-3 rounded-full bg-slate-200 relative overflow-hidden border border-slate-300">
                     <div
-                      className="absolute inset-y-0 left-0 bg-ok-800/80 border-r border-ok-600 transition-all duration-700 ease-out"
+                      className="absolute inset-y-0 left-0 bg-teal-600 rounded-full transition-all duration-500"
                       style={{ width: `${residualPct}%` }}
                     />
                   </div>
-                  <div className="flex justify-between text-[9px] font-mono text-ink-500">
+                  <div className="flex justify-between text-[10px] font-mono text-slate-500">
                     <span>Residual: {formatINR(simulationResult.simulated_eal)}</span>
                     <span>Baseline: {formatINR(simulationResult.baseline_eal)}</span>
                   </div>
                 </div>
 
-                <div className="mt-5 space-y-2.5">
-                  <div className="tile px-3.5 py-3 flex items-center justify-between gap-2">
-                    <span className="eyebrow">Risk Reduction</span>
-                    <span className="text-[17px] font-mono font-bold text-ok-300">
+                <div className="mt-5 space-y-2">
+                  <div className="p-2.5 rounded-lg bg-white border border-slate-200 flex items-center justify-between">
+                    <span className="text-xs font-mono text-slate-500">Risk Reduction</span>
+                    <span className="text-sm font-mono font-bold text-teal-700">
                       <CountUp value={simulationResult.risk_reduction} format={formatINR} />
                     </span>
                   </div>
-                  <div className="tile px-3.5 py-3 flex items-center justify-between gap-2">
-                    <span className="eyebrow">Control Cost</span>
-                    <span className="text-[15px] font-mono font-bold text-brass-300">
+                  <div className="p-2.5 rounded-lg bg-white border border-slate-200 flex items-center justify-between">
+                    <span className="text-xs font-mono text-slate-500">Total Investment Cost</span>
+                    <span className="text-sm font-mono font-bold text-slate-900">
                       <CurrencyFormatter value={simulationResult.total_control_cost} />
                     </span>
                   </div>
-                  <div className="px-3.5 py-3 flex items-center justify-between gap-2 rounded-lg bg-brass-950/60 border border-brass-800">
-                    <span className="eyebrow text-brass-300">ROSI</span>
-                    <span className="display-num text-[22px] leading-none text-brass-300">
+                  <div className="p-2.5 rounded-lg bg-teal-50 border border-teal-200 flex items-center justify-between">
+                    <span className="text-xs font-mono font-bold text-teal-800">Portfolio ROSI</span>
+                    <span className="text-base font-mono font-bold text-teal-800">
                       {simulationResult.rosi}x
                     </span>
                   </div>
                 </div>
               </div>
 
-              <div className="mt-5 text-[11px] text-ink-400 font-mono">
-                Net Financial Value: <strong className="text-ok-400">{formatINR(simulationResult.net_benefit)}</strong>
+              <div className="mt-5 text-[11px] text-slate-500 font-mono">
+                Net Economic Value: <strong className="text-teal-700">{formatINR(simulationResult.net_benefit)}</strong>
               </div>
             </div>
           </Reveal>
 
-          {/* AFTER */}
+          {/* AFTER: Simulated Posture */}
           <Reveal delay={160} className="lg:col-span-4">
-            <div className="panel h-full border-ok-800/60 p-6 flex flex-col justify-between">
+            <div className="panel h-full border-emerald-200 bg-emerald-50/30 p-6 flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between gap-2">
-                  <span className="eyebrow text-ok-400">After — Simulated Posture</span>
-                  <span className="chip border-ok-800 bg-ok-950 text-ok-300">
+                  <span className="text-xs font-mono font-bold uppercase text-emerald-800">After — Simulated Posture</span>
+                  <span className="badge-emerald font-bold">
                     {simulationResult.active_controls_count} CONTROLS ACTIVE
                   </span>
                 </div>
 
-                <div className="mt-6 space-y-5">
+                <div className="mt-6 space-y-4">
                   <div>
-                    <span className="text-[11px] text-ink-400 font-mono">SIMULATED RISK SCORE</span>
-                    <div className="display-num text-[38px] leading-none text-ok-400 mt-1.5 flex items-baseline gap-2.5">
+                    <span className="text-xs text-slate-500 font-mono">SIMULATED RISK SCORE</span>
+                    <div className="text-3xl sm:text-4xl font-bold tracking-tight text-teal-700 mt-1 flex items-baseline gap-2.5">
                       <span>
                         {simulationResult.simulated_risk_score}
-                        <span className="text-sm text-ink-500 font-sans font-normal"> / 100</span>
+                        <span className="text-sm text-slate-400 font-normal"> / 100</span>
                       </span>
-                      <span className="text-xs font-mono px-1.5 py-0.5 rounded bg-ok-950 border border-ok-800 text-ok-300 self-center">
+                      <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 self-center">
                         −{simulationResult.baseline_risk_score - simulationResult.simulated_risk_score} pts
                       </span>
                     </div>
                   </div>
 
                   <div>
-                    <span className="text-[11px] text-ink-400 font-mono">RESIDUAL EXPECTED ANNUAL LOSS</span>
-                    <div className="text-[22px] font-mono font-bold text-ok-300 mt-1">
+                    <span className="text-xs text-slate-500 font-mono">RESIDUAL EXPECTED ANNUAL LOSS</span>
+                    <div className="text-xl sm:text-2xl font-mono font-bold text-teal-800 mt-1">
                       <CountUp value={simulationResult.simulated_eal} format={formatINR} />
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="mt-6 pt-4 border-t border-ink-800 text-[11px] text-ok-400 font-mono flex items-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
-                <span>Financial exposure mitigated by {mitigatedPct}%.</span>
+              <div className="mt-6 pt-4 border-t border-emerald-100 text-[11px] text-emerald-800 font-mono">
+                Simulated financial risk with selected security treatment applied.
               </div>
             </div>
           </Reveal>
         </div>
       )}
 
-      {loading && !simulationResult && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4" aria-label="Loading simulation">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="panel p-6 space-y-4">
-              <Skeleton className="h-2.5 w-32" />
-              <Skeleton className="h-10 w-28" />
-              <Skeleton className="h-2.5 w-full" />
-              <Skeleton className="h-2.5 w-2/3" />
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* ===== Control sandbox ===== */}
-      <Reveal delay={120}>
+      {/* ===== Controls Interactive Selection Grid ===== */}
+      <Reveal delay={200}>
         <Panel
-          title="Interactive Control Selection Sandbox"
-          subtitle="Click a control to toggle it — the simulation recalculates instantly."
+          title="Interactive Security Control Toggles"
+          subtitle="Click to enable or disable specific controls. Risk calculations recalculate instantaneously."
           icon={Layers}
           actions={
-            <span className="text-[10px] font-mono text-ink-500">
-              {enabledIds.length}/{controls.length} ENABLED
+            <span className="text-xs font-mono text-slate-500">
+              {enabledIds.length} of {controls.length} Enabled
             </span>
           }
         >
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-            {controls.map((ctrl) => {
-              const isChecked = enabledIds.includes(ctrl.id);
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {controls.map((control) => {
+              const isEnabled = enabledIds.includes(control.id);
               return (
-                <button
-                  key={ctrl.id}
-                  onClick={() => toggleControl(ctrl.id)}
-                  role="switch"
-                  aria-checked={isChecked}
-                  aria-label={`${isChecked ? 'Disable' : 'Enable'} ${ctrl.name}`}
-                  className={`text-left p-4 rounded-lg border transition-all select-none flex flex-col justify-between min-h-[150px] ${
-                    isChecked
-                      ? 'bg-brass-950/40 border-brass-700 shadow-[0_0_0_1px_rgba(217,168,78,0.08)]'
-                      : 'bg-ink-950 border-ink-800 hover:border-ink-700 opacity-80 hover:opacity-100'
+                <div
+                  key={control.id}
+                  onClick={() => toggleControl(control.id)}
+                  className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                    isEnabled
+                      ? 'bg-emerald-50/50 border-teal-500 shadow-sm'
+                      : 'bg-white border-slate-200 hover:border-slate-300 opacity-75'
                   }`}
                 >
-                  <div>
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="font-semibold text-ink-50 text-xs flex-1 leading-snug">{ctrl.name}</div>
-                      <span
-                        className={`w-[18px] h-[18px] rounded flex items-center justify-center border transition-colors shrink-0 mt-0.5 ${
-                          isChecked ? 'bg-brass-500 border-brass-400 text-ink-1000' : 'border-ink-600 bg-ink-900'
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className={`w-5 h-5 rounded flex items-center justify-center border transition-colors ${
+                          isEnabled
+                            ? 'bg-teal-700 border-teal-700 text-white'
+                            : 'bg-slate-100 border-slate-300 text-transparent'
                         }`}
-                        aria-hidden="true"
                       >
-                        {isChecked && <Check className="w-3 h-3 stroke-[3.5]" />}
-                      </span>
+                        <Check className="w-3.5 h-3.5" />
+                      </div>
+                      <span className="font-bold text-sm text-slate-900 line-clamp-1">{control.name}</span>
                     </div>
-                    <p className="text-[10.5px] text-ink-400 mt-2 line-clamp-2 leading-relaxed">{ctrl.description}</p>
+                    <span className="badge-slate text-[10px] shrink-0 font-mono">
+                      {control.category}
+                    </span>
                   </div>
 
-                  <div className="mt-3.5 pt-2.5 border-t border-ink-800 space-y-1 text-[10.5px] font-mono">
-                    <div className="flex justify-between text-ink-400">
-                      <span>Cost:</span>
-                      <strong className="text-ink-100">{formatINR(ctrl.cost)}</strong>
+                  <p className="text-xs text-slate-600 mt-2 line-clamp-2">{control.description}</p>
+
+                  <div className="grid grid-cols-3 gap-2 mt-3 pt-2.5 border-t border-slate-100 text-xs font-mono">
+                    <div>
+                      <div className="text-[10px] text-slate-400 uppercase font-semibold">Cost</div>
+                      <div className="font-bold text-slate-900">{formatINR(control.cost)}</div>
                     </div>
-                    <div className="flex justify-between text-ink-400">
-                      <span>Risk Reduction:</span>
-                      <strong className="text-ok-400">{formatINR(ctrl.risk_reduction)}</strong>
+                    <div>
+                      <div className="text-[10px] text-slate-400 uppercase font-semibold">Reduction</div>
+                      <div className="font-bold text-teal-700">{formatINR(control.risk_reduction)}</div>
                     </div>
-                    <div className="flex justify-between text-ink-400">
-                      <span>ROSI:</span>
-                      <strong className="text-brass-300">{ctrl.rosi}x</strong>
+                    <div>
+                      <div className="text-[10px] text-slate-400 uppercase font-semibold">ROSI</div>
+                      <div className="font-bold text-teal-800">{control.rosi}x</div>
                     </div>
                   </div>
-                </button>
+                </div>
               );
             })}
           </div>
-
-          {controls.length === 0 && !loading && (
-            <EmptyState
-              tone="danger"
-              icon={AlertTriangle}
-              title="Control catalog unavailable"
-              message="The controls endpoint did not respond. Verify the backend is running, then retry."
-              action={
-                <button
-                  onClick={() => window.location.reload()}
-                  className="btn btn-primary"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Reload</span>
-                </button>
-              }
-            />
-          )}
         </Panel>
       </Reveal>
     </div>

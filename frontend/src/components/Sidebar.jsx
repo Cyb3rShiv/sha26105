@@ -10,6 +10,8 @@ import {
   FileCheck2,
   Radio,
   X,
+  Shield,
+  Zap,
 } from 'lucide-react';
 
 const NAV_GROUPS = [
@@ -18,7 +20,7 @@ const NAV_GROUPS = [
     items: [{ id: 'dashboard', label: 'Executive Dashboard', icon: LayoutDashboard }],
   },
   {
-    label: 'Exposure',
+    label: 'Risk & Topology',
     items: [
       { id: 'assets', label: 'Asset Risk Inventory', icon: Server, badge: '6' },
       { id: 'vulnerabilities', label: 'Threats & CVEs', icon: ShieldAlert, badge: '10' },
@@ -26,44 +28,24 @@ const NAV_GROUPS = [
     ],
   },
   {
-    label: 'Modeling',
+    label: 'Simulations & AI',
     items: [
       { id: 'monte_carlo', label: 'Monte Carlo Simulation', icon: TrendingUp, badge: '10K' },
       { id: 'what_if', label: 'What-If Simulator', icon: Sliders, badge: 'Live' },
     ],
   },
   {
-    label: 'Decisions',
+    label: 'Economics & Budget',
     items: [{ id: 'optimizer', label: 'Investment Optimizer', icon: Coins, badge: 'ROSI' }],
   },
   {
-    label: 'Governance',
+    label: 'Compliance & Logs',
     items: [
-      { id: 'compliance', label: 'Regulatory Frameworks', icon: FileCheck2, badge: 'RBI' },
+      { id: 'compliance', label: 'Regulatory Matrix', icon: FileCheck2, badge: 'RBI' },
       { id: 'ingestion', label: 'Live Telemetry Stream', icon: Radio, badge: 'Pulse' },
     ],
   },
 ];
-
-function BrandMark() {
-  return (
-    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"
-        stroke="#d9a84e"
-        strokeWidth="1.4"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M9.4 8.2h5.2M9.4 10.6h5.2M11.8 8.2c1.9 0 3.1 1 3.1 2.4 0 1.4-1.2 2.4-3.1 2.4h-.4l3.2 3.2M11.4 13v3"
-        stroke="#e5bc63"
-        strokeWidth="1.3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
 
 export default function Sidebar({
   activeTab,
@@ -92,7 +74,7 @@ export default function Sidebar({
       {/* Mobile backdrop */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-40 bg-ink-1000/75 backdrop-blur-[2px] lg:hidden"
+          className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm lg:hidden"
           onClick={onClose}
           aria-hidden="true"
         />
@@ -100,22 +82,24 @@ export default function Sidebar({
 
       <aside
         aria-label="Primary navigation"
-        className={`fixed inset-y-0 left-0 z-50 w-[270px] bg-ink-950 border-r border-ink-800 flex flex-col h-full select-none
+        className={`fixed inset-y-0 left-0 z-50 w-[260px] bg-white border-r border-slate-200 flex flex-col h-full select-none
           transition-transform duration-300 ease-out lg:translate-x-0 lg:static lg:z-auto
-          ${isOpen ? 'translate-x-0 shadow-2xl shadow-black/60' : '-translate-x-full'}`}
+          ${isOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}`}
       >
-        {/* Brand */}
-        <div className="px-5 h-16 flex items-center justify-between border-b border-ink-800 shrink-0">
+        {/* Brand Header */}
+        <div className="px-5 h-16 flex items-center justify-between border-b border-slate-200 shrink-0 bg-white">
           <div className="flex items-center gap-3">
-            <BrandMark />
+            <div className="w-7 h-7 rounded-lg bg-teal-700 flex items-center justify-center text-white shadow-sm">
+              <Shield className="w-4 h-4" />
+            </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="text-[13px] font-bold tracking-[0.08em] text-ink-50">CYBER-QUANT</span>
-                <span className="text-[9px] px-1.5 py-px rounded bg-brass-950 text-brass-300 border border-brass-800 font-mono">
+                <span className="text-sm font-bold tracking-tight text-slate-900">CyberQuant</span>
+                <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-teal-50 text-teal-800 border border-teal-200 font-mono font-bold">
                   PS 26105
                 </span>
               </div>
-              <div className="text-[10px] text-ink-400 tracking-wider font-mono mt-0.5">
+              <div className="text-[10px] text-slate-500 font-mono">
                 FinTrust Bank SOC
               </div>
             </div>
@@ -123,17 +107,19 @@ export default function Sidebar({
           <button
             onClick={onClose}
             aria-label="Close navigation"
-            className="p-1.5 rounded-md text-ink-400 hover:text-ink-50 hover:bg-ink-850 transition-colors lg:hidden"
+            className="p-1.5 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors lg:hidden"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Grouped navigation */}
-        <nav className="flex-1 px-3 py-4 space-y-5 overflow-y-auto">
+        {/* Navigation Items */}
+        <nav className="flex-1 px-3 py-4 space-y-5 overflow-y-auto bg-slate-50/50">
           {NAV_GROUPS.map((group) => (
             <div key={group.label}>
-              <div className="eyebrow px-3 mb-1.5">{group.label}</div>
+              <div className="text-[10.5px] font-mono font-semibold uppercase tracking-wider text-slate-500 px-3 mb-1.5">
+                {group.label}
+              </div>
               <ul className="space-y-0.5">
                 {group.items.map((item) => {
                   const Icon = item.icon;
@@ -146,29 +132,26 @@ export default function Sidebar({
                       <button
                         onClick={() => handleSelect(item.id)}
                         aria-current={isActive ? 'page' : undefined}
-                        className={`group relative w-full flex items-center justify-between pl-4 pr-3 py-2 rounded-lg text-[12.5px] font-medium transition-colors ${
+                        className={`group relative w-full flex items-center justify-between px-3 py-2 rounded-lg text-[13px] font-medium transition-all ${
                           isActive
-                            ? 'bg-ink-850 text-ink-50'
-                            : 'text-ink-300 hover:text-ink-100 hover:bg-ink-900'
+                            ? 'bg-teal-50 text-teal-900 font-bold border border-teal-200 shadow-sm'
+                            : 'text-slate-600 hover:text-slate-900 hover:bg-white hover:border-slate-200 border border-transparent'
                         }`}
                       >
-                        {isActive && (
-                          <span className="absolute left-0 top-2 bottom-2 w-[2px] rounded-full bg-brass-500" />
-                        )}
                         <span className="flex items-center gap-2.5 min-w-0">
                           <Icon
-                            className={`w-[15px] h-[15px] shrink-0 transition-colors ${
-                              isActive ? 'text-brass-400' : 'text-ink-400 group-hover:text-ink-300'
+                            className={`w-4 h-4 shrink-0 transition-colors ${
+                              isActive ? 'text-teal-700' : 'text-slate-400 group-hover:text-slate-600'
                             }`}
                           />
                           <span className="truncate">{item.label}</span>
                         </span>
                         {badge && (
                           <span
-                            className={`text-[9px] font-mono px-1.5 py-0.5 rounded border whitespace-nowrap ${
+                            className={`text-[9.5px] font-mono font-bold px-1.5 py-0.5 rounded border whitespace-nowrap ${
                               isActive
-                                ? 'bg-brass-950 text-brass-300 border-brass-800'
-                                : 'bg-ink-900 text-ink-400 border-ink-800'
+                                ? 'bg-teal-100 text-teal-900 border-teal-300'
+                                : 'bg-slate-100 text-slate-500 border-slate-200'
                             }`}
                           >
                             {badge}
@@ -183,20 +166,20 @@ export default function Sidebar({
           ))}
         </nav>
 
-        {/* Telemetry engine status */}
-        <div className="p-4 border-t border-ink-800 bg-ink-1000/60 shrink-0">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="live-dot" />
-              <span className="text-[11px] font-medium text-ink-200">Telemetry Engine</span>
+        {/* Footer: System Status */}
+        <div className="p-3 border-t border-slate-200 shrink-0 bg-white">
+          <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-[11px] font-semibold text-slate-700">Continuous Engine</span>
+              </div>
+              <span className="text-[10px] font-mono text-emerald-700 font-bold">99.9%</span>
             </div>
-            <span className="text-[9px] text-ok-400 font-mono bg-ok-950 px-1.5 py-0.5 rounded border border-ok-800 tracking-wider">
-              ONLINE
-            </span>
-          </div>
-          <div className="mt-2 text-[9.5px] text-ink-500 font-mono flex justify-between">
-            <span>Continuous Ingest</span>
-            <span>100% Normalized</span>
+            <div className="text-[10.5px] text-slate-500 flex items-center gap-1">
+              <Zap className="w-3 h-3 text-teal-600" />
+              <span>FAIR + Knapsack Active</span>
+            </div>
           </div>
         </div>
       </aside>

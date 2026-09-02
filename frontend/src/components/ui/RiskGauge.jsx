@@ -5,15 +5,11 @@ const prefersReducedMotion = () =>
   window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const COLOR = {
-  danger: '#e05260',
-  warn: '#e39b3d',
-  ok: '#46a873',
+  danger: '#dc2626',
+  warn: '#d97706',
+  ok: '#16a34a',
 };
 
-/**
- * Semicircular SVG gauge for the 0–100 enterprise risk score.
- * Sweep animation on mount / value change (respects reduced motion).
- */
 export default function RiskGauge({ score = 0, size = 196, caption = 'Enterprise Risk Score' }) {
   const [display, setDisplay] = useState(0);
   const prevRef = useRef(0);
@@ -39,7 +35,7 @@ export default function RiskGauge({ score = 0, size = 196, caption = 'Enterprise
     return () => cancelAnimationFrame(frameRef.current);
   }, [score]);
 
-  const strokeW = 9;
+  const strokeW = 8;
   const r = (size - strokeW * 2) / 2;
   const cx = size / 2;
   const cy = size / 2;
@@ -54,7 +50,7 @@ export default function RiskGauge({ score = 0, size = 196, caption = 'Enterprise
     const rad = (Math.PI * deg) / 180;
     return [cx + r * Math.cos(rad), cy - r * Math.sin(rad)];
   };
-  const tickAt = (deg, len = 5) => {
+  const tickAt = (deg, len = 4) => {
     const [x1, y1] = polar(deg);
     const rad = (Math.PI * deg) / 180;
     const x2 = cx + (r + len) * Math.cos(rad);
@@ -64,23 +60,22 @@ export default function RiskGauge({ score = 0, size = 196, caption = 'Enterprise
 
   return (
     <div className="relative inline-flex flex-col items-center" role="img" aria-label={`${caption}: ${score} out of 100`}>
-      <svg width={size} height={size / 2 + 26} viewBox={`0 0 ${size} ${size / 2 + 26}`}>
-        {/* end ticks */}
+      <svg width={size} height={size / 2 + 24} viewBox={`0 0 ${size} ${size / 2 + 24}`}>
         {[0, 45, 90, 135, 180].map((deg) => {
           const t = tickAt(deg);
           return (
             <line
               key={deg}
               x1={t.x1}
-              y1={t.y1 + 6}
+              y1={t.y1 + 4}
               x2={t.x2}
-              y2={t.y2 + 6}
-              stroke="#303850"
+              y2={t.y2 + 4}
+              stroke="#cbd5e1"
               strokeWidth="1"
             />
           );
         })}
-        <path d={trackD} fill="none" stroke="#242b3d" strokeWidth={strokeW} strokeLinecap="round" transform={`translate(0 ${strokeW / 2 + 4})`} />
+        <path d={trackD} fill="none" stroke="#e2e8f0" strokeWidth={strokeW} strokeLinecap="round" transform={`translate(0 ${strokeW / 2 + 4})`} />
         <path
           d={trackD}
           fill="none"
@@ -93,13 +88,13 @@ export default function RiskGauge({ score = 0, size = 196, caption = 'Enterprise
           style={{ transition: 'stroke 0.4s ease' }}
         />
       </svg>
-      <div className="absolute inset-x-0 bottom-1 flex flex-col items-center">
-        <div className="display-num text-[40px] leading-none" style={{ color }}>
+      <div className="absolute inset-x-0 bottom-0 flex flex-col items-center">
+        <div className="text-[34px] font-bold font-sans tracking-tight leading-none" style={{ color }}>
           {Math.round(display)}
         </div>
-        <div className="text-[10px] font-mono text-ink-400 mt-1 tracking-wider">/ 100</div>
+        <div className="text-[10px] font-mono text-slate-400 mt-0.5 tracking-wider">/ 100</div>
       </div>
-      <div className="eyebrow mt-1.5">{caption}</div>
+      {caption && <div className="text-[10.5px] font-mono uppercase text-slate-500 font-semibold mt-1">{caption}</div>}
     </div>
   );
 }

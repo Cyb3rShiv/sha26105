@@ -10,9 +10,9 @@ const FRAMEWORKS = [
     name: 'RBI Cyber Security Framework',
     scope: 'BANKS',
     icon: Landmark,
-    tint: 'text-info-400 border-info-900/70',
-    scopeCls: 'bg-info-950 text-info-300 border-info-800',
-    checkCls: 'text-info-400',
+    tint: 'border-blue-200 bg-blue-50/20 text-blue-700',
+    scopeCls: 'badge-blue',
+    checkCls: 'text-blue-700',
     description: 'Mandates multi-factor authentication, perimeter defense, and 24x7 SOC log telemetry.',
     footnote: '100% Mapped Controls',
   },
@@ -20,9 +20,9 @@ const FRAMEWORKS = [
     name: 'SEBI CSCRF 2024',
     scope: 'CAPITAL MKTS',
     icon: Scale,
-    tint: 'text-warn-400 border-warn-900/70',
-    scopeCls: 'bg-warn-950 text-warn-300 border-warn-800',
-    checkCls: 'text-warn-400',
+    tint: 'border-amber-200 bg-amber-50/20 text-amber-800',
+    scopeCls: 'badge-amber',
+    checkCls: 'text-amber-800',
     description: 'Cybersecurity & Cyber Resilience Framework covering air-gapped backups and Zero Trust.',
     footnote: '100% Mapped Controls',
   },
@@ -30,9 +30,9 @@ const FRAMEWORKS = [
     name: 'ISO/IEC 27001:2022',
     scope: 'GLOBAL',
     icon: Globe2,
-    tint: 'text-brass-400 border-brass-900/70',
-    scopeCls: 'bg-brass-950 text-brass-300 border-brass-800',
-    checkCls: 'text-brass-400',
+    tint: 'border-teal-200 bg-teal-50/20 text-teal-800',
+    scopeCls: 'badge-emerald',
+    checkCls: 'text-teal-800',
     description: 'Annex A controls for vulnerability management, cryptography, and access governance.',
     footnote: 'Annex A Aligned',
   },
@@ -40,9 +40,9 @@ const FRAMEWORKS = [
     name: 'NIST CSF 2.0',
     scope: 'STANDARD',
     icon: ClipboardList,
-    tint: 'text-ok-400 border-ok-900/70',
-    scopeCls: 'bg-ok-950 text-ok-300 border-ok-800',
-    checkCls: 'text-ok-400',
+    tint: 'border-slate-200 bg-slate-50 text-slate-700',
+    scopeCls: 'badge-slate',
+    checkCls: 'text-slate-800',
     description: 'Govern, Identify, Protect, Detect, Respond, Recover functions with ROSI validation.',
     footnote: 'NIST 2.0 Verified',
   },
@@ -66,13 +66,14 @@ export default function ComplianceView({ complianceMappings = [] }) {
     <div className="p-6 md:p-8 space-y-6 max-w-[1400px] mx-auto">
       <PageHeader
         icon={FileCheck2}
-        eyebrow="Governance / Regulatory Mapping"
-        title="Regulatory & Compliance Framework Mapping"
-        description="Automated compliance linkage to RBI Banking Guidelines, SEBI CSCRF, ISO 27001, and NIST CSF 2.0."
+        index="08"
+        eyebrow="Governance & Regulatory Frameworks"
+        title="Regulatory Matrix & Audit Mapping"
+        description="Automated compliance traceability cross-mapped to RBI Banking Guidelines, SEBI CSCRF 2024, ISO 27001, and NIST CSF 2.0."
         actions={
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-ink-900 border border-ink-800 text-[11px] font-mono text-ink-200">
-            <Award className="w-3.5 h-3.5 text-brass-400" />
-            <span>Prototype Mapping (RBI &amp; SEBI Certified)</span>
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-teal-50 border border-teal-200 text-xs font-mono font-bold text-teal-800">
+            <Award className="w-3.5 h-3.5 text-teal-700" />
+            <span>Audit-Ready Cross-Mapping</span>
           </div>
         }
       />
@@ -82,20 +83,20 @@ export default function ComplianceView({ complianceMappings = [] }) {
         {FRAMEWORKS.map((fw, idx) => {
           const Icon = fw.icon;
           return (
-            <Reveal key={fw.name} delay={idx * 70}>
-              <div className={`panel panel-hover h-full p-5 border ${fw.tint}`}>
+            <Reveal key={fw.name} delay={idx * 50}>
+              <div className={`panel h-full p-5 border ${fw.tint}`}>
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <Icon className="w-4 h-4 shrink-0" />
-                    <span className="font-semibold text-[12.5px] text-ink-50 leading-tight">{fw.name}</span>
+                    <span className="font-bold text-xs text-slate-900 leading-tight">{fw.name}</span>
                   </div>
-                  <span className={`text-[8.5px] font-mono px-1.5 py-0.5 rounded border shrink-0 tracking-wider ${fw.scopeCls}`}>
+                  <span className={`${fw.scopeCls} text-[9.5px] shrink-0`}>
                     {fw.scope}
                   </span>
                 </div>
-                <p className="text-[11px] text-ink-400 mt-2.5 leading-relaxed">{fw.description}</p>
-                <div className={`mt-3.5 pt-3 border-t border-ink-800 text-[11px] font-mono font-semibold ${fw.checkCls}`}>
-                  {fw.footnote}
+                <p className="text-xs text-slate-600 mt-2.5 leading-relaxed">{fw.description}</p>
+                <div className={`mt-3.5 pt-3 border-t border-slate-200 text-xs font-mono font-bold ${fw.checkCls}`}>
+                  ✓ {fw.footnote}
                 </div>
               </div>
             </Reveal>
@@ -103,72 +104,80 @@ export default function ComplianceView({ complianceMappings = [] }) {
         })}
       </div>
 
-      {/* Cross-mapping matrix */}
-      <Reveal delay={120}>
-        <Panel
-          flush
-          title="Security Controls & Regulatory Cross-Mapping Matrix"
-          icon={ShieldCheck}
-          actions={
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 text-ink-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                aria-label="Search regulatory clauses"
-                placeholder="Search regulatory clause…"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="input pl-9 w-52 md:w-64"
-              />
-            </div>
-          }
-        >
+      {/* Search Bar */}
+      <Reveal delay={100} className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            aria-label="Search compliance controls"
+            placeholder="Search control name, section, ISO, RBI clause…"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-9 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 placeholder:text-slate-400 focus:outline-teal-700 shadow-sm"
+          />
+        </div>
+        <span className="text-xs font-mono text-slate-500 sm:ml-auto">
+          {filtered.length} of {complianceMappings.length} Controls Mapped
+        </span>
+      </Reveal>
+
+      {/* Compliance Mapping Table */}
+      <Reveal delay={140}>
+        <Panel flush>
           <div className="overflow-x-auto">
-            <table className="data-table min-w-[820px]">
+            <table className="data-table">
               <thead>
                 <tr>
-                  <th>Control & Category</th>
-                  <th>RBI Banking</th>
-                  <th>SEBI CSCRF</th>
-                  <th>ISO 27001</th>
+                  <th>Security Control</th>
+                  <th>Category</th>
+                  <th>RBI Cyber Security</th>
+                  <th>SEBI CSCRF 2024</th>
+                  <th>ISO 27001:2022</th>
                   <th>NIST CSF 2.0</th>
-                  <th>Status</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((item, idx) => (
-                  <tr key={idx} className="hover:bg-ink-850">
+                {filtered.map((item, i) => (
+                  <tr key={i} className="hover:bg-slate-50">
                     <td>
-                      <div className="font-semibold text-ink-50">{item.control_name}</div>
-                      <div className="text-[10.5px] text-ink-400 font-mono mt-0.5">{item.category}</div>
+                      <div className="font-bold text-slate-900">{item.control_name}</div>
+                      <div className="text-[11px] text-slate-400 font-mono mt-0.5">{item.control_id}</div>
                     </td>
-                    <td className="font-mono text-info-300 text-[11px]">{item.rbi_framework}</td>
-                    <td className="font-mono text-warn-300 text-[11px]">{item.sebi_cscrf}</td>
-                    <td className="font-mono text-brass-300 text-[11px]">{item.iso27001}</td>
-                    <td className="font-mono text-ok-300 text-[11px]">{item.nist_csf}</td>
                     <td>
-                      <span className="chip border-ok-800 bg-ok-950 text-ok-300">{item.status}</span>
+                      <span className="badge-slate font-mono text-[10.5px]">
+                        {item.category}
+                      </span>
                     </td>
+                    <td className="font-mono text-xs text-blue-700 font-semibold">{item.rbi_framework}</td>
+                    <td className="font-mono text-xs text-amber-800 font-semibold">{item.sebi_cscrf}</td>
+                    <td className="font-mono text-xs text-teal-800 font-semibold">{item.iso27001}</td>
+                    <td className="font-mono text-xs text-slate-700 font-semibold">{item.nist_csf}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-
-          {filtered.length === 0 && (
-            <EmptyState
-              icon={Inbox}
-              title="No clauses match your search"
-              message="Search across control names, categories, RBI, SEBI CSCRF, ISO 27001 and NIST CSF clauses."
-              action={
-                <button onClick={() => setSearchTerm('')} className="btn btn-ghost">
-                  Clear search
-                </button>
-              }
-            />
-          )}
         </Panel>
       </Reveal>
+
+      {filtered.length === 0 && (
+        <Panel>
+          <EmptyState
+            icon={Inbox}
+            title="No regulatory mappings found"
+            message="Try searching for a different clause, control name, or framework standard."
+            action={
+              <button
+                onClick={() => setSearchTerm('')}
+                className="btn btn-secondary text-xs"
+              >
+                Clear Search
+              </button>
+            }
+          />
+        </Panel>
+      )}
     </div>
   );
 }
