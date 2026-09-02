@@ -123,6 +123,8 @@ def get_initial_state() -> Dict[str, Any]:
     }
 
 def get_session_state(session_id: Optional[str] = None) -> Dict[str, Any]:
+    if not isinstance(session_id, str):
+        session_id = None
     key = (session_id or "").strip() or "default"
     now = time.time()
     if random.random() < 0.05:

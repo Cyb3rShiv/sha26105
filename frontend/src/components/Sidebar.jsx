@@ -81,8 +81,8 @@ export default function Sidebar({
     {
       group: 'Enterprise Telemetry',
       items: [
-        { id: 'assets', label: 'Banking Assets', icon: Server, badge: '6' },
-        { id: 'vulnerabilities', label: 'Active CVEs', icon: ShieldAlert, badge: '10' },
+        { id: 'assets', label: 'Banking Assets', icon: Server, badge: String(assetCount || 6) },
+        { id: 'vulnerabilities', label: 'Active CVEs', icon: ShieldAlert, badge: String(vulnCount || 10) },
         { id: 'attack_path', label: 'Attack Path Graph', icon: Network, badge: null },
         { id: 'ingestion', label: 'Live Telemetry Stream', icon: Radio, badge: 'OCSF' },
       ]
@@ -90,7 +90,7 @@ export default function Sidebar({
     {
       group: 'Governance & Audit',
       items: [
-        { id: 'compliance', label: 'Compliance Frameworks', icon: FileCheck2, badge: '100%' },
+        { id: 'compliance', label: 'Compliance Frameworks', icon: FileCheck2, badge: 'Aligned' },
       ]
     }
   ];

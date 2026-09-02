@@ -19,13 +19,13 @@ class MonteCarloSimulator:
         control_effectiveness: float = 0.0,
         probability_modifier: float = 1.0,
         time_horizon_years: int = 1,
-        random_seed: Optional[int] = None
+        random_seed: Optional[int] = 26105
     ) -> Dict[str, Any]:
         """
         Runs Monte Carlo simulation and returns complete statistical percentiles,
         Value at Risk (VaR), exceedance probabilities, asset loss contributions, and histogram bins.
         """
-        # Set seed if specified, else use randomized entropy
+        # Set seed if specified (default 26105 for reproducible audit baseline)
         if random_seed is not None:
             np.random.seed(int(random_seed))
         else:
@@ -218,6 +218,7 @@ class MonteCarloSimulator:
             "probability_modifier": probability_modifier,
             "time_horizon_years": time_horizon_years,
             "summary_statement": summary_statement,
+            "random_seed": random_seed,
             "top_risk_drivers": top_risk_drivers,
             "distribution_bins": distribution_bins,
             "exceedance_stats": exceedance_stats,

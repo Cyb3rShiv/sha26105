@@ -1,4 +1,5 @@
-import { CANONICAL_ASSETS } from '../data/fallback/canonicalData';
+import { CANONICAL_ASSETS } from '../data/fallback/canonicalData.js';
+import { mulberry32 } from '../domain/riskModel.js';
 
 /**
  * High-Precision Client-Side Monte Carlo Loss Simulator.
@@ -16,6 +17,7 @@ export function simulateMonteCarloClient({
   controlEffectiveness = 0.0,
   probabilityModifier = 1.0,
   timeHorizonYears = 1,
+  randomSeed = 26105,
 } = {}) {
   const n = Math.max(100, Math.min(Number(iterations) || 10000, 50000));
   const sigma = Math.max(0.1, Math.min(Number(volatilitySigma) || 0.35, 1.0));
@@ -30,11 +32,14 @@ export function simulateMonteCarloClient({
   const totalLosses = new Float64Array(n);
   const assetLossSums = new Float64Array(targetAssets.length);
 
+  // Deterministic PRNG using Mulberry32 for reproducible simulations
+  const rng = randomSeed !== null && randomSeed !== undefined ? mulberry32(randomSeed) : Math.random;
+
   // Box-Muller standard normal generator
   function randomNormal() {
     let u = 0, v = 0;
-    while (u === 0) u = Math.random();
-    while (v === 0) v = Math.random();
+    while (u === 0) u = rng();
+    while (v === 0) v = rng();
     return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
   }
 
@@ -61,7 +66,7 @@ export function simulateMonteCarloClient({
     let iterationLoss = 0;
 
     for (let j = 0; j < assetParams.length; j++) {
-      if (Math.random() < assetParams[j].prob) {
+      if (rng() < assetParams[j].prob) {
         // Log-normal sample
         const logNormalSample = Math.exp(assetParams[j].mu + sigma * randomNormal());
         iterationLoss += logNormalSample;
@@ -222,6 +227,7 @@ export function simulateMonteCarloClient({
     control_effectiveness: eff,
     probability_modifier: probMod,
     time_horizon_years: horizon,
+    random_seed: randomSeed,
     summary_statement: summaryStatement,
     top_risk_drivers: topRiskDrivers,
     distribution_bins: distributionBins,

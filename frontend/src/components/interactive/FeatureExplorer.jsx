@@ -14,21 +14,27 @@ import {
   Scale,
 } from 'lucide-react';
 import CurrencyFormatter, { formatINR } from '../CurrencyFormatter';
+import {
+  CANONICAL_BASELINE_EAL,
+  CANONICAL_BASELINE_SCORE,
+  CANONICAL_OPTIMAL_PORTFOLIO,
+  PAYMENT_SERVER_METRICS
+} from '../../domain/riskModel';
 
 const FEATURES = [
   {
     id: 'fair',
-    tab: 'assets',
+    tab: 'monte_carlo',
     index: '01',
     title: 'FAIR Risk Quantification',
     icon: Calculator,
     tagline: 'Zero black-box risk scoring. Real rupee financial impact.',
     description: 'Decomposes cyber risk into Incident Likelihood × Financial Severity across 5 deterministic loss categories: Downtime, Data Breach, Regulatory DPDP fines, Incident Recovery, and Business Disruption.',
     previewTitle: 'Internet-facing Payment Server (AST-001) FAIR Breakdown',
-    stat1: { label: 'Likelihood', value: '18.0% / yr' },
-    stat2: { label: 'Single Loss Event', value: '₹4.00 Cr' },
-    stat3: { label: 'Expected Annual Loss', value: '₹72.0 L' },
-    formula: 'EAL = 18.0% Likelihood × [ ₹1.2Cr Downtime + ₹1.5Cr Breach + ₹80L DPDP + ₹30L Recovery + ₹20L Disruption ] = ₹72.0 L/yr',
+    stat1: { label: 'Likelihood', value: `${PAYMENT_SERVER_METRICS.likelihoodPct.toFixed(1)}% / yr` },
+    stat2: { label: 'Single Loss Event', value: PAYMENT_SERVER_METRICS.singleLossFormatted },
+    stat3: { label: 'Expected Annual Loss', value: PAYMENT_SERVER_METRICS.ealFormatted },
+    formula: PAYMENT_SERVER_METRICS.formulaText,
   },
   {
     id: 'monte_carlo',
@@ -40,9 +46,9 @@ const FEATURES = [
     description: 'Replaces single-point estimates with compound Bernoulli and Log-Normal loss distributions. Quantifies tail risk percentiles (P10, P50, P90, P95, P99) and 95% Cyber Value at Risk (VaR).',
     previewTitle: '10,000 Trial Simulation Output',
     stat1: { label: 'Mean Annual Loss', value: '₹1.84 Cr' },
-    stat2: { label: 'P90 Tail Loss', value: '₹5.95 Cr' },
-    stat3: { label: '95% Value at Risk', value: '₹7.64 Cr' },
-    formula: '95% of simulated scenarios fall below ₹7.64 Cr (VaR 95%). Compound Log-Normal dispersion factor σ = 0.35.',
+    stat2: { label: 'P90 Tail Loss', value: '₹5.59 Cr' },
+    stat3: { label: '95% Value at Risk', value: '₹7.19 Cr' },
+    formula: '95% of simulated scenarios fall below ₹7.19 Cr (VaR 95%). Compound Log-Normal dispersion factor σ = 0.35 with mean preservation.',
   },
   {
     id: 'optimizer',
@@ -54,9 +60,9 @@ const FEATURES = [
     description: 'Solves the bounded 0/1 knapsack dynamic programming problem to select the mathematically optimal portfolio of security controls that maximizes Return on Security Investment (ROSI).',
     previewTitle: '₹25.0 Lakhs Optimal Security Allocation',
     stat1: { label: 'Allocated Budget', value: '₹25.0 L' },
-    stat2: { label: 'Risk Reduction', value: '₹57.0 L' },
-    stat3: { label: 'Benefit-Cost Ratio (BCR)', value: '2.28x BCR (128% Net ROSI)' },
-    formula: 'Dynamic Programming state matrix selects Emergency Patching + FIDO2 MFA + Air-Gapped Backups to eliminate ₹57L of baseline risk (31.0%).',
+    stat2: { label: 'Risk Reduction', value: `₹${(CANONICAL_OPTIMAL_PORTFOLIO.reduction / 100000).toFixed(1)} L` },
+    stat3: { label: 'Benefit-Cost Ratio (BCR)', value: `${CANONICAL_OPTIMAL_PORTFOLIO.bcr}x BCR (${CANONICAL_OPTIMAL_PORTFOLIO.netRosi}% Net ROSI)` },
+    formula: `Dynamic Programming state matrix selects Emergency Patching + FIDO2 MFA + Air-Gapped Backups to eliminate ₹${(CANONICAL_OPTIMAL_PORTFOLIO.reduction / 100000).toFixed(1)}L of baseline risk (${CANONICAL_OPTIMAL_PORTFOLIO.mitigatablePct}%).`,
   },
   {
     id: 'what_if',
@@ -67,10 +73,10 @@ const FEATURES = [
     tagline: 'Interactive before-and-after posture modeling.',
     description: 'Toggle proposed security investments in real time to simulate instantaneous shifts in Enterprise Risk Score, Expected Annual Loss, and residual exposure before signing vendor purchase orders.',
     previewTitle: 'Before vs After Control Evaluation',
-    stat1: { label: 'Baseline Score', value: '70 / 100' },
-    stat2: { label: 'Post-Remediation', value: '44 / 100 (−26 pts)' },
-    stat3: { label: 'Net Financial Value', value: '₹34.0 L' },
-    formula: 'Instantly quantifies exposure shift: Baseline ₹1.84 Cr → Simulated Residual ₹1.25 Cr.',
+    stat1: { label: 'Baseline Score', value: `${CANONICAL_BASELINE_SCORE} / 100` },
+    stat2: { label: 'Optimal Remediation', value: `${CANONICAL_OPTIMAL_PORTFOLIO.simulatedScore} / 100 (−${CANONICAL_OPTIMAL_PORTFOLIO.scoreDelta} pts)` },
+    stat3: { label: 'Net Financial Value', value: `₹${(CANONICAL_OPTIMAL_PORTFOLIO.netBenefit / 100000).toFixed(1)} L` },
+    formula: `Instantly quantifies exposure shift: Baseline ₹1.84 Cr → Simulated Residual ₹${(CANONICAL_OPTIMAL_PORTFOLIO.residual / 10000000).toFixed(2)} Cr (Net Value ₹${(CANONICAL_OPTIMAL_PORTFOLIO.netBenefit / 100000).toFixed(1)}L).`,
   },
   {
     id: 'compliance',
@@ -81,8 +87,8 @@ const FEATURES = [
     tagline: 'Cross-mapped to RBI, SEBI CSCRF 2024, ISO 27001 & NIST CSF.',
     description: 'Eliminates compliance audit silos by automatically linking quantified security controls to RBI Cybersecurity Framework, SEBI CSCRF 2024, ISO 27001:2022 Annex A, and NIST CSF 2.0.',
     previewTitle: 'Audit-Ready Traceability Matrix',
-    stat1: { label: 'RBI Guidelines', value: '100% Mapped' },
-    stat2: { label: 'SEBI CSCRF 2024', value: '100% Mapped' },
+    stat1: { label: 'RBI Guidelines', value: 'Framework-Aligned' },
+    stat2: { label: 'SEBI CSCRF 2024', value: 'Circular-Aligned' },
     stat3: { label: 'ISO 27001 Annex A', value: '100% Aligned' },
     formula: 'Continuous compliance mapping validates regulatory control adherence alongside financial risk reduction.',
   },

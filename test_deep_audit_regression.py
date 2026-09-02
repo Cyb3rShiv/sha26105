@@ -175,7 +175,7 @@ def test_static_assets_and_csp():
 
     with open("frontend/vercel.json", "r", encoding="utf-8") as f:
         vj = json.load(f)
-    csp = next(h["value"] for h in vj["headers"][0]["headers"] if h["key"] == "Content-Security-Policy")
+    csp = next(h["value"] for block in vj.get("headers", []) for h in block.get("headers", []) if h["key"] == "Content-Security-Policy")
     assert "localhost" not in csp, "Localhost found in production CSP"
     assert "127.0.0.1" not in csp, "127.0.0.1 found in production CSP"
     assert "https://*" not in csp, "Wildcard https://* found in production CSP"

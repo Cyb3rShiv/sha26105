@@ -65,11 +65,11 @@ const ALLOCATION_STEPS = [
   {
     budget: 2500000,
     label: '₹25 Lakhs (Optimal 0/1 Knapsack Portfolio)',
-    eal: 12700000,
+    eal: 12500000,
     var95: 48000000,
-    residualRisk: 12700000,
-    reduction: 5700000,
-    rosi: 2.28,
+    residualRisk: 12500000,
+    reduction: 5900000,
+    rosi: 2.36,
     activeControls: 3,
     controls: [
       'Patch Critical KEV Vulnerabilities (₹15L · ₹35L Reduc)',

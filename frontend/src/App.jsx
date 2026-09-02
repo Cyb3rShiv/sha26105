@@ -13,6 +13,7 @@ import ComplianceView from './pages/ComplianceView';
 import IngestionView from './pages/IngestionView';
 import Toast from './components/ui/Toast';
 import CommandPalette from './components/ui/CommandPalette';
+import AppErrorBoundary from './components/ui/AppErrorBoundary';
 import { api, subscribeConnectivity, onBackendReconnect } from './services/api';
 import { AlertTriangle, WifiOff } from 'lucide-react';
 
@@ -325,16 +326,19 @@ export default function App() {
         {/* Global toast notification */}
         {toastMessage && <Toast message={toastMessage} onClose={() => setToastMessage(null)} />}
 
-        {/* Main View Area */}
-        <main key={activeTab} className="flex-1 pb-16">
-          {activeTab === 'dashboard' && (
-            <DashboardView
-              dashboardData={dashboardData}
-              onNavigate={navigate}
-              onSimulateEvent={handleSimulateEvent}
-              isSimulating={isSimulating}
-            />
-          )}
+        {/* Main View Area wrapped in Error Boundary */}
+        <AppErrorBoundary onNavigate={navigate}>
+          <main key={activeTab} className="flex-1 pb-16">
+            {activeTab === 'dashboard' && (
+              <DashboardView
+                dashboardData={dashboardData}
+                onNavigate={navigate}
+                onSimulateEvent={handleSimulateEvent}
+                isSimulating={isSimulating}
+                isOnline={isOnline}
+                connectionInfo={connectionInfo}
+              />
+            )}
 
           {activeTab === 'assets' && (
             <AssetsView
@@ -387,7 +391,8 @@ export default function App() {
               lastSimulatedResponse={lastSimulatedResponse}
             />
           )}
-        </main>
+          </main>
+        </AppErrorBoundary>
       </div>
     </div>
   );

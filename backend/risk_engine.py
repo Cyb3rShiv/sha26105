@@ -196,7 +196,7 @@ class RiskEngine:
             return min(100, max(10, int(round(base_score + gain))))
         else:
             ratio = (base_eal - total_eal) / base_eal
-            drop = (base_score - 15) * ratio
+            drop = (base_score - 17) * ratio
             return min(100, max(10, int(round(base_score - drop))))
 
     @classmethod

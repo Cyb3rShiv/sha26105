@@ -82,8 +82,8 @@ class InvestmentOptimizer:
                 "residual_eal": residual_eal
             })
 
-        total_applied_reduction = round(total_applied_reduction, 2)
-        total_residual_eal = round(total_residual_eal, 2)
+        total_applied_reduction = min(baseline_eal, round(sum(c.get("risk_reduction", 0.0) for c in selected_controls), 2))
+        total_residual_eal = max(0.0, round(baseline_eal - total_applied_reduction, 2))
 
         # Enterprise score strictly monotonic with residual EAL
         from risk_engine import RiskEngine
@@ -212,6 +212,8 @@ class InvestmentOptimizer:
             "selected_controls": selected_sorted,
             "unselected_controls": unselected_sorted,
             "per_asset_results": calc["per_asset_results"],
+            "simulated_risk_score": calc["simulated_risk_score"],
+            "risk_score": calc["simulated_risk_score"],
             "optimization_summary": summary
         }
 

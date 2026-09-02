@@ -8,6 +8,16 @@ import {
   CANONICAL_EVENTS,
   CANONICAL_DASHBOARD
 } from '../data/fallback/canonicalData';
+import {
+  ASSETS,
+  CONTROLS,
+  VULNERABILITIES,
+  CANONICAL_BASELINE_EAL,
+  CANONICAL_BASELINE_SCORE,
+  solveKnapsack,
+  evaluatePortfolio,
+  calculateRiskScore
+} from '../domain/riskModel.js';
 
 export const FINTRUST_FALLBACK_ASSETS = CANONICAL_ASSETS;
 export const FINTRUST_FALLBACK_CONTROLS = CANONICAL_CONTROLS;
@@ -297,132 +307,54 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 12000) {
   }
 }
 
-// Unified Client-Side Risk Reduction Calculator matching backend per-asset capped math
+// Canonical Client-Side Risk Reduction Calculator using domain riskModel
 export function calculateClientControlledPortfolio(assets = CANONICAL_ASSETS, selectedControls = [], baselineRiskScore = 70) {
-  const totalCost = selectedControls.reduce((sum, c) => sum + (c.cost || 0), 0);
-  const baselineEal = assets.reduce((sum, a) => sum + (a.eal || 0), 0);
-
-  const assetRawReductions = {};
-  assets.forEach((a) => { assetRawReductions[a.id] = 0; });
-  const assetImpacts = [];
-
-  selectedControls.forEach((c) => {
-    const targets = c.target_asset_ids || [];
-    const numTargets = Math.max(1, targets.length);
-    const appCost = Math.round(((c.cost || 0) / numTargets) * 100) / 100;
-    const appRed = Math.round(((c.risk_reduction || 0) / numTargets) * 100) / 100;
-
-    targets.forEach((targetId) => {
-      if (assetRawReductions[targetId] !== undefined) {
-        assetRawReductions[targetId] += appRed;
-      }
-      assetImpacts.push({
-        asset_id: targetId,
-        control_id: c.id,
-        applied_control: c.name,
-        control_cost: c.cost,
-        apportioned_cost: appCost,
-        control_reduction: c.risk_reduction,
-        apportioned_reduction: appRed
-      });
-    });
-  });
-
-  const perAssetResults = [];
-  let totalAppliedReduction = 0;
-  let totalResidualEal = 0;
-
-  assets.forEach((a) => {
-    const rawRed = assetRawReductions[a.id] || 0;
-    const appliedRed = Math.min(a.eal, rawRed);
-    const residualEal = Math.max(0, Math.round((a.eal - appliedRed) * 100) / 100);
-    totalAppliedReduction += appliedRed;
-    totalResidualEal += residualEal;
-
-    perAssetResults.push({
-      asset_id: a.id,
-      asset_name: a.name,
-      baseline_eal: a.eal,
-      raw_reduction: Math.round(rawRed * 100) / 100,
-      applied_reduction: Math.round(appliedRed * 100) / 100,
-      residual_eal: residualEal
-    });
-  });
-
-  totalAppliedReduction = Math.round(totalAppliedReduction * 100) / 100;
-  totalResidualEal = Math.round(totalResidualEal * 100) / 100;
-  const scoreRatio = totalAppliedReduction / Math.max(1, baselineEal);
-  const simScore = Math.max(10, Math.round(baselineRiskScore * (1.0 - scoreRatio * 0.75)));
-  const rosi = totalCost > 0 ? Number((totalAppliedReduction / totalCost).toFixed(2)) : 0;
-  const netBenefit = totalAppliedReduction - totalCost;
-
+  const evalRes = evaluatePortfolio(selectedControls, CANONICAL_BASELINE_EAL, baselineRiskScore);
   return {
-    baseline_eal: baselineEal,
+    baseline_eal: CANONICAL_BASELINE_EAL,
     baseline_risk_score: baselineRiskScore,
-    simulated_eal: totalResidualEal,
-    remaining_risk: totalResidualEal,
-    simulated_risk_score: simScore,
-    total_control_cost: totalCost,
-    total_risk_reduction: totalAppliedReduction,
-    risk_reduction: totalAppliedReduction,
-    net_benefit: netBenefit,
-    rosi,
-    overall_rosi: rosi,
+    simulated_eal: evalRes.residual,
+    remaining_risk: evalRes.residual,
+    simulated_risk_score: evalRes.simulatedScore,
+    total_control_cost: evalRes.cost,
+    total_risk_reduction: evalRes.reduction,
+    risk_reduction: evalRes.reduction,
+    net_benefit: evalRes.netBenefit,
+    bcr: evalRes.bcr,
+    benefit_cost_ratio: evalRes.bcr,
+    rosi_percentage: evalRes.netRosi,
+    overall_rosi: evalRes.bcr,
+    rosi: evalRes.bcr,
+    mitigatable_percentage: evalRes.mitigatablePct,
     active_controls_count: selectedControls.length,
-    asset_changes: assetImpacts,
-    per_asset_results: perAssetResults
+    asset_changes: [],
+    per_asset_results: []
   };
 }
 
-// Local 0/1 Knapsack fallback solver with per-asset capped math
-export function solveLocalKnapsack(budget, controls = FINTRUST_FALLBACK_CONTROLS, baselineEal = 18400000) {
-  const n = controls.length;
-  let bestCombo = [];
-  let bestReduction = -1;
-  let bestCost = 0;
-  const solverName = '0/1 Knapsack Exact Search (Local Resilient Engine)';
-
-  const totalSubsets = 1 << n;
-  for (let mask = 0; mask < totalSubsets; mask++) {
-    let currentCost = 0;
-    const currentCombo = [];
-
-    for (let i = 0; i < n; i++) {
-      if ((mask & (1 << i)) !== 0) {
-        currentCost += controls[i].cost;
-        currentCombo.push(controls[i]);
-      }
-    }
-
-    if (currentCost <= budget) {
-      const calc = calculateClientControlledPortfolio(CANONICAL_ASSETS, currentCombo);
-      const currentReduction = calc.total_risk_reduction;
-      if (currentReduction > bestReduction || (currentReduction === bestReduction && currentCost < bestCost)) {
-        bestReduction = currentReduction;
-        bestCost = currentCost;
-        bestCombo = currentCombo;
-      }
-    }
-  }
-
-  const unselected = controls.filter((c) => !bestCombo.some((s) => s.id === c.id));
-  const calc = calculateClientControlledPortfolio(CANONICAL_ASSETS, bestCombo);
-  const remainingRisk = calc.remaining_risk;
-  const overallRosi = calc.overall_rosi;
-
+// Local 0/1 Knapsack fallback solver with exact combinatorial DP matching backend
+export function solveLocalKnapsack(budget, controls = FINTRUST_FALLBACK_CONTROLS, baselineEal = CANONICAL_BASELINE_EAL) {
+  const opt = solveKnapsack(controls, budget, baselineEal);
   return {
     budget,
-    total_cost: bestCost,
-    total_risk_reduction: bestReduction,
-    remaining_risk: remainingRisk,
-    overall_rosi: overallRosi,
+    total_cost: opt.cost,
+    total_risk_reduction: opt.reduction,
+    remaining_risk: opt.residual,
+    bcr: opt.bcr,
+    benefit_cost_ratio: opt.bcr,
+    rosi_percentage: opt.netRosi,
+    overall_rosi: opt.bcr,
+    rosi: opt.bcr,
+    mitigatable_percentage: opt.mitigatablePct,
     baseline_eal: baselineEal,
-    optimized_eal: remainingRisk,
-    selected_controls: bestCombo.sort((a, b) => b.rosi - a.rosi),
-    unselected_controls: unselected.sort((a, b) => b.rosi - a.rosi),
-    per_asset_results: calc.per_asset_results,
-    solver_engine: solverName,
-    optimization_summary: `Optimized portfolio selected ${bestCombo.length} controls utilizing ₹${(bestCost / 100000).toFixed(1)}L of ₹${(budget / 100000).toFixed(1)}L budget, yielding ₹${(bestReduction / 100000).toFixed(1)}L in risk reduction (ROSI ${overallRosi}x).`
+    optimized_eal: opt.residual,
+    simulated_risk_score: opt.simulatedScore,
+    risk_score: opt.simulatedScore,
+    selected_controls: opt.selectedControls,
+    unselected_controls: controls.filter((c) => !opt.selectedIds.includes(c.id)),
+    per_asset_results: [],
+    solver_engine: '0/1 Knapsack Exact Combinatorial DP (Client-Side Engine)',
+    optimization_summary: `Optimized portfolio selected ${opt.selectedControls.length} controls utilizing ₹${(opt.cost / 100000).toFixed(1)}L of ₹${(budget / 100000).toFixed(1)}L budget, yielding ₹${(opt.reduction / 100000).toFixed(1)}L in financial risk reduction (BCR ${opt.bcr}x / ${opt.netRosi}% Net ROSI).`
   };
 }
 

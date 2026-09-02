@@ -85,7 +85,14 @@ function DashboardSkeleton() {
   );
 }
 
-export default function DashboardView({ dashboardData, onNavigate, onSimulateEvent, isSimulating }) {
+export default function DashboardView({
+  dashboardData,
+  onNavigate,
+  onSimulateEvent,
+  isSimulating = false,
+  isOnline = true,
+  connectionInfo = { state: 'ONLINE' }
+}) {
   if (!dashboardData) {
     return <DashboardSkeleton />;
   }
@@ -169,9 +176,9 @@ export default function DashboardView({ dashboardData, onNavigate, onSimulateEve
     {
       title: "Potential Risk Reduction",
       value: <CountUp value={potential_risk_reduction} format={formatINR} />,
-      sub: "0/1 Knapsack (128% Net ROSI)",
+      sub: `0/1 Knapsack (${recommended_portfolio_summary.rosi_percentage || 136}% Net ROSI)`,
       tone: 'ok',
-      badge: `${recommended_portfolio_summary.bcr || recommended_portfolio_summary.overall_rosi || recommended_portfolio_summary.rosi || '2.28'}x BCR`,
+      badge: `${recommended_portfolio_summary.bcr || recommended_portfolio_summary.overall_rosi || recommended_portfolio_summary.rosi || '2.36'}x BCR`,
       badgeTone: "ok",
     }
   ];

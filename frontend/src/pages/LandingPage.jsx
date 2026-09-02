@@ -26,6 +26,11 @@ import LiveUniverseSandbox from '../components/interactive/LiveUniverseSandbox';
 import FeatureExplorer from '../components/interactive/FeatureExplorer';
 import CurrencyFormatter, { formatINR } from '../components/CurrencyFormatter';
 import CountUp from '../components/ui/CountUp';
+import {
+  CANONICAL_BASELINE_EAL,
+  CANONICAL_BASELINE_SCORE,
+  CANONICAL_OPTIMAL_PORTFOLIO
+} from '../domain/riskModel';
 
 const TYPED_PHRASES = [
   "Quantify your exposure in ₹ Rupees.",
@@ -71,13 +76,13 @@ export default function LandingPage({ onLaunchConsole, dashboardData }) {
     return () => clearTimeout(timeout);
   }, [displayedText, isDeleting, phraseIndex]);
 
-  const currentEal = dashboardData?.expected_annual_loss || 18400000;
-  const currentRiskScore = dashboardData?.enterprise_risk_score || 70;
-  const currentVar95 = dashboardData?.var_95 || 76400000;
-  const totalReduction = dashboardData?.recommended_portfolio_summary?.total_risk_reduction || 5700000;
-  const optimalSpend = dashboardData?.recommended_portfolio_summary?.total_cost || 2500000;
-  const mitigatablePct = currentEal > 0 ? ((totalReduction / currentEal) * 100).toFixed(1) : '31.0';
-  const overallRosi = dashboardData?.recommended_portfolio_summary?.overall_rosi || dashboardData?.recommended_portfolio_summary?.rosi || 2.28;
+  const currentEal = dashboardData?.expected_annual_loss || CANONICAL_BASELINE_EAL;
+  const currentRiskScore = dashboardData?.enterprise_risk_score || CANONICAL_BASELINE_SCORE;
+  const currentVar95 = dashboardData?.var_95 || 71900000;
+  const totalReduction = dashboardData?.recommended_portfolio_summary?.total_risk_reduction || CANONICAL_OPTIMAL_PORTFOLIO.reduction;
+  const optimalSpend = dashboardData?.recommended_portfolio_summary?.total_cost || CANONICAL_OPTIMAL_PORTFOLIO.cost;
+  const mitigatablePct = currentEal > 0 ? ((totalReduction / currentEal) * 100).toFixed(1) : CANONICAL_OPTIMAL_PORTFOLIO.mitigatablePct;
+  const overallRosi = dashboardData?.recommended_portfolio_summary?.bcr || dashboardData?.recommended_portfolio_summary?.overall_rosi || CANONICAL_OPTIMAL_PORTFOLIO.bcr;
 
   const handleTabKeyDown = (e, currentId) => {
     const tabs = ['overview', 'simulation', 'optimizer'];
@@ -252,7 +257,7 @@ export default function LandingPage({ onLaunchConsole, dashboardData }) {
                     <div className="text-[10px] text-slate-500 font-mono mt-1">1-in-20-year loss</div>
                   </div>
                   <div className="p-3.5 sm:p-4 bg-white rounded-xl border border-slate-200 shadow-xs">
-                    <div className="text-[10px] sm:text-[10.5px] font-mono uppercase text-slate-500 font-semibold">Knapsack ROSI Multiplier</div>
+                    <div className="text-[10px] sm:text-[10.5px] font-mono uppercase text-slate-500 font-semibold">Benefit-Cost Ratio (BCR)</div>
                     <div className="text-lg sm:text-xl font-bold font-mono text-teal-700 mt-1">{overallRosi}x</div>
                     <div className="text-[10px] text-slate-500 font-mono mt-1">{formatINR(totalReduction)} / {formatINR(optimalSpend)} Spend</div>
                   </div>

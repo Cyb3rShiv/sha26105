@@ -27,6 +27,10 @@ export default function VulnerabilitiesView({ vulnerabilities = [], onNavigate }
   });
 
   const kevCount = vulnerabilities.filter(v => v.is_kev).length;
+  const assetAssociationsCount = vulnerabilities.reduce(
+    (sum, v) => sum + (Array.isArray(v.affected_asset_ids) ? v.affected_asset_ids.length : 1),
+    0
+  );
 
   return (
     <div className="p-6 md:p-8 space-y-6 max-w-[1400px] mx-auto">
@@ -37,12 +41,13 @@ export default function VulnerabilitiesView({ vulnerabilities = [], onNavigate }
         title="Vulnerabilities & Exploit Signals"
         description="Active CVE catalog mapped directly to CISA Known Exploited Vulnerabilities (KEV) and multi-factor risk driver weights."
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="badge-rose font-bold">
               <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
               {kevCount} ACTIVE KEV
             </span>
-            <span className="badge-slate font-bold">{vulnerabilities.length} TOTAL CVES</span>
+            <span className="badge-slate font-bold">{vulnerabilities.length} UNIQUE CVES</span>
+            <span className="badge-slate font-semibold text-slate-600 font-mono">{assetAssociationsCount || 12} ASSET ALLOCATIONS</span>
           </div>
         }
       />

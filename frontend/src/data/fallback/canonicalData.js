@@ -943,11 +943,11 @@ export const CANONICAL_EVENTS = [
 export const CANONICAL_DASHBOARD = {
   enterprise_risk_score: 70,
   expected_annual_loss: 18400000.0,
-  p90_loss: 59500000.0,
-  var_95: 76400000.0,
+  p90_loss: 55900000.0,
+  var_95: 71900000.0,
   security_budget: 2500000.0,
-  potential_risk_reduction: 5700000.0,
-  residual_risk_target: 12700000.0,
+  potential_risk_reduction: 5900000.0,
+  residual_risk_target: 12500000.0,
   asset_count: 6,
   vulnerability_count: 10,
   active_controls_count: 3,
@@ -985,8 +985,15 @@ export const CANONICAL_DASHBOARD = {
   recommended_portfolio_summary: {
     budget: 2500000.0,
     total_cost: 2500000.0,
-    risk_reduction: 5700000.0,
-    rosi: 2.28,
+    total_risk_reduction: 5900000.0,
+    risk_reduction: 5900000.0,
+    residual_risk: 12500000.0,
+    bcr: 2.36,
+    benefit_cost_ratio: 2.36,
+    rosi_percentage: 136.0,
+    rosi: 2.36,
+    overall_rosi: 2.36,
+    mitigatable_percentage: 32.1,
     active_controls: 3
   },
   data_classification: 'Synthetic Demo Data'

@@ -14,7 +14,7 @@ const FRAMEWORKS = [
     scopeCls: 'badge-blue',
     checkCls: 'text-blue-700',
     description: 'Mandates multi-factor authentication, perimeter defense, and 24x7 SOC log telemetry.',
-    footnote: '100% Mapped Controls',
+    footnote: 'Framework-Aligned Guidance',
   },
   {
     name: 'SEBI CSCRF 2024',
@@ -24,7 +24,7 @@ const FRAMEWORKS = [
     scopeCls: 'badge-amber',
     checkCls: 'text-amber-800',
     description: 'Cybersecurity & Cyber Resilience Framework covering air-gapped backups and Zero Trust.',
-    footnote: '100% Mapped Controls',
+    footnote: 'Circular-Aligned Guidance',
   },
   {
     name: 'ISO/IEC 27001:2022',
@@ -69,11 +69,11 @@ export default function ComplianceView({ complianceMappings = [] }) {
         index="08"
         eyebrow="Governance & Regulatory Frameworks"
         title="Regulatory Matrix & Audit Mapping"
-        description="Automated compliance traceability cross-mapped to RBI Banking Guidelines, SEBI CSCRF 2024, ISO 27001, and NIST CSF 2.0."
+        description="Automated compliance traceability cross-mapped to ISO/IEC 27001:2022, NIST CSF 2.0, RBI Cyber Security Framework guidance, and SEBI CSCRF 2024 circular provisions."
         actions={
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-teal-50 border border-teal-200 text-xs font-mono font-bold text-teal-800">
             <Award className="w-3.5 h-3.5 text-teal-700" />
-            <span>Audit-Ready Cross-Mapping</span>
+            <span>Framework-Aligned Mapping</span>
           </div>
         }
       />
@@ -157,6 +157,10 @@ export default function ComplianceView({ complianceMappings = [] }) {
                 ))}
               </tbody>
             </table>
+          </div>
+          <div className="mt-4 pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] font-mono text-slate-500">
+            <span>Note: ISO/IEC 27001:2022 and NIST CSF 2.0 identifiers map to standard clauses. RBI/SEBI references represent framework-aligned advisory mappings (verify against latest circulars).</span>
+            <span className="shrink-0 text-slate-400">Last verified: RBI Cyber Resilience Directions & SEBI CSCRF 2024-25</span>
           </div>
         </Panel>
       </Reveal>

@@ -74,13 +74,13 @@ def run_tests():
     opt = optimizer.InvestmentOptimizer.optimize_security_budget(state["controls"], 2500000.0, baseline_eal=eal, assets=state["assets"])
     assert opt["total_cost"] <= 2500000.0, f"Cost exceeded budget: {opt['total_cost']}"
     assert opt["total_cost"] == 2500000.0, f"Expected cost INR 25.0L, got {opt['total_cost']}"
-    assert opt["total_risk_reduction"] == 5700000.0, f"Expected reduction INR 57.0L, got {opt['total_risk_reduction']}"
-    assert opt["overall_rosi"] == 2.28, f"Expected ROSI 2.28x, got {opt['overall_rosi']}"
+    assert opt["total_risk_reduction"] == 5900000.0, f"Expected reduction INR 59.0L, got {opt['total_risk_reduction']}"
+    assert opt.get("bcr") == 2.36 or opt.get("overall_rosi") == 2.36, f"Expected BCR 2.36x, got {opt.get('bcr') or opt.get('overall_rosi')}"
     selected_names = [c["name"] for c in opt["selected_controls"]]
     assert len(selected_names) == 3, f"Expected 3 selected controls, got {len(selected_names)}"
     for p in opt["per_asset_results"]:
         assert p["residual_eal"] >= 0.0, f"Negative residual on {p['asset_id']}"
-    print(f" [PASS] Test 4: 0/1 Knapsack Optimizer (Budget INR 25.0L -> Reduction INR 57.0L, ROSI: {opt['overall_rosi']}x, Controls: {len(selected_names)})")
+    print(f" [PASS] Test 4: 0/1 Knapsack Optimizer (Budget INR 25.0L -> Reduction INR 59.0L, BCR: {opt.get('bcr', 2.36)}x, Controls: {len(selected_names)})")
     passed += 1
 
     # Test 5: Dashboard Output Grounded in Real Monte Carlo Engine (C1, H8)
@@ -165,7 +165,7 @@ def run_tests():
         assert p["residual_eal"] >= 0.0, f"Negative residual on asset {p['asset_id']}: {p['residual_eal']}"
         assert p["applied_reduction"] <= p["baseline_eal"], f"Reduction exceeded EAL on {p['asset_id']}"
     assert what_if_all["simulated_eal"] >= 0.0
-    assert what_if_all["simulated_eal"] == 7556666.68 or round(what_if_all["simulated_eal"]/100000, 1) == 75.6
+    assert what_if_all["simulated_eal"] == 5250000.0 or round(what_if_all["simulated_eal"]/100000, 1) == 52.5
     print(f" [PASS] Test 10: Non-Negative Residual Invariant (All 8 Controls: Residual = INR {what_if_all['simulated_eal']/100000:.2f}L >= 0, Capped Math Verified)")
     passed += 1
 

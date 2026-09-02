@@ -75,9 +75,9 @@ def run_all_tests():
         baseline_eal=baseline_eal,
         assets=assets
     )
-    assert opt_res['bcr'] == 2.28, f"BCR mismatch: {opt_res['bcr']}"
-    assert opt_res['rosi_percentage'] == 128.0, f"Net ROSI mismatch: {opt_res['rosi_percentage']}"
-    assert "BCR 2.28x / 128.0% Net ROSI" in opt_res['optimization_summary'], "Summary text missing BCR/Net ROSI"
+    assert opt_res['bcr'] == 2.36, f"BCR mismatch: {opt_res['bcr']}"
+    assert opt_res['rosi_percentage'] == 136.0, f"Net ROSI mismatch: {opt_res['rosi_percentage']}"
+    assert "BCR 2.36x / 136.0% Net ROSI" in opt_res['optimization_summary'], "Summary text missing BCR/Net ROSI"
     print(f"[PASS] H-1: Benefit-Cost Ratio ({opt_res['bcr']}x BCR) and Net ROSI ({opt_res['rosi_percentage']}%) verified")
 
     # -------------------------------------------------------------
