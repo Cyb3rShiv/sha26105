@@ -13,7 +13,7 @@ import ComplianceView from './pages/ComplianceView';
 import IngestionView from './pages/IngestionView';
 import Toast from './components/ui/Toast';
 import CommandPalette from './components/ui/CommandPalette';
-import { api, subscribeConnectivity } from './services/api';
+import { api, subscribeConnectivity, onBackendReconnect } from './services/api';
 import { AlertTriangle, WifiOff } from 'lucide-react';
 
 const VALID_TABS = [
@@ -27,6 +27,18 @@ const VALID_TABS = [
   'compliance',
   'ingestion'
 ];
+
+const TAB_TITLES = {
+  dashboard: 'Executive Dashboard | Cyber-Quant',
+  assets: 'Asset Risk Inventory (FAIR EAL) | Cyber-Quant',
+  vulnerabilities: 'Vulnerability Intelligence (KEV) | Cyber-Quant',
+  monte_carlo: 'Monte Carlo Loss Simulator (10K Trials) | Cyber-Quant',
+  optimizer: '0/1 Knapsack Security Optimizer | Cyber-Quant',
+  what_if: 'What-If Scenario Sandbox | Cyber-Quant',
+  attack_path: 'Adversary Attack Path Kill Chain | Cyber-Quant',
+  compliance: 'Regulatory Trust & Compliance Matrix | Cyber-Quant',
+  ingestion: 'Live Telemetry & Ingestion Stream | Cyber-Quant'
+};
 
 export default function App() {
   const [viewMode, setViewMode] = useState('landing'); // 'landing' | 'app'
@@ -44,20 +56,41 @@ export default function App() {
   const [lastSimulatedResponse, setLastSimulatedResponse] = useState(null);
   const [toastMessage, setToastMessage] = useState(null);
 
-  // Subscribe to backend connectivity state
+  // Subscribe to backend connectivity state & auto-reconnect notifications
   useEffect(() => {
-    return subscribeConnectivity((status) => {
+    const unsubConn = subscribeConnectivity((status) => {
       setIsOnline(status);
     });
+    const unsubReconn = onBackendReconnect(() => {
+      setToastMessage("🟢 Reconnected to live FinTrust backend. Real-time telemetry synchronized.");
+      fetchGlobalState();
+      setTimeout(() => setToastMessage(null), 5000);
+    });
+    return () => {
+      unsubConn();
+      unsubReconn();
+    };
   }, []);
 
-  // Hash-based routing & deep linking support
-  const syncRouteFromHash = useCallback(() => {
+  // Update dynamic document titles
+  useEffect(() => {
+    if (viewMode === 'landing') {
+      document.title = 'Cyber-Quant | Cyber Risk Quantification & Capital Optimization Platform';
+    } else {
+      document.title = TAB_TITLES[activeTab] || 'Cyber-Quant | FinTrust Bank Console';
+    }
+  }, [viewMode, activeTab]);
+
+  // Dual pathname and hash-based routing & deep linking support
+  const syncRoute = useCallback(() => {
     const rawHash = window.location.hash.replace(/^#\/?/, '').trim();
-    if (!rawHash || rawHash === 'overview' || rawHash === 'landing') {
+    const rawPath = window.location.pathname.replace(/^\//, '').trim();
+    const target = rawHash || rawPath;
+    if (!target || target === 'overview' || target === 'landing') {
       setViewMode('landing');
     } else {
-      const matched = VALID_TABS.find(t => t === rawHash || t === rawHash.replace('-', '_'));
+      const normalized = target.replace('-', '_');
+      const matched = VALID_TABS.find(t => t === target || t === normalized);
       if (matched) {
         setActiveTab(matched);
         setViewMode('app');
@@ -68,14 +101,14 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    syncRouteFromHash();
-    window.addEventListener('hashchange', syncRouteFromHash);
-    window.addEventListener('popstate', syncRouteFromHash);
+    syncRoute();
+    window.addEventListener('hashchange', syncRoute);
+    window.addEventListener('popstate', syncRoute);
     return () => {
-      window.removeEventListener('hashchange', syncRouteFromHash);
-      window.removeEventListener('popstate', syncRouteFromHash);
+      window.removeEventListener('hashchange', syncRoute);
+      window.removeEventListener('popstate', syncRoute);
     };
-  }, [syncRouteFromHash]);
+  }, [syncRoute]);
 
   const fetchGlobalState = async () => {
     try {

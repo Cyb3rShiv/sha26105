@@ -1,6 +1,19 @@
-import { simulateMonteCarloClient, FINTRUST_FALLBACK_ASSETS } from './monteCarloFallback';
+import { simulateMonteCarloClient } from './monteCarloFallback';
+import {
+  CANONICAL_ASSETS,
+  CANONICAL_VULNERABILITIES,
+  CANONICAL_CONTROLS,
+  CANONICAL_ATTACK_PATH,
+  CANONICAL_COMPLIANCE,
+  CANONICAL_EVENTS,
+  CANONICAL_DASHBOARD
+} from '../data/fallback/canonicalData';
+
+export const FINTRUST_FALLBACK_ASSETS = CANONICAL_ASSETS;
+export const FINTRUST_FALLBACK_CONTROLS = CANONICAL_CONTROLS;
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://fintrust-backend-vmml.onrender.com/api';
+const HEALTH_URL = API_BASE_URL.replace(/\/api$/, '') + '/health';
 
 // Generate or retrieve persistent demo session ID
 function getSessionId() {
@@ -13,31 +26,121 @@ function getSessionId() {
   return sid;
 }
 
-// Global connectivity state listeners
-let backendOnline = true;
-const connectivityListeners = new Set();
+// Connection State Management: 'ONLINE' | 'CONNECTING' | 'OFFLINE'
+let connectionState = 'ONLINE';
+let reconnectTimer = null;
+let reconnectAttempt = 0;
+const MAX_CONNECTING_RETRIES = 5;
 
-function notifyConnectivity(isOnline) {
-  if (backendOnline !== isOnline) {
-    backendOnline = isOnline;
-    connectivityListeners.forEach((cb) => cb(isOnline));
-  }
+const connectivityListeners = new Set();
+const reconnectListeners = new Set();
+
+function notifyConnectivity(isOnline, state = isOnline ? 'ONLINE' : 'OFFLINE', message = '') {
+  connectionState = state;
+  connectivityListeners.forEach((cb) => cb(isOnline, { state, message }));
 }
 
 export function subscribeConnectivity(callback) {
   connectivityListeners.add(callback);
-  callback(backendOnline);
+  callback(connectionState === 'ONLINE', { state: connectionState, message: '' });
   return () => connectivityListeners.delete(callback);
 }
 
-export function isBackendOnline() {
-  return backendOnline;
+export function onBackendReconnect(callback) {
+  reconnectListeners.add(callback);
+  return () => reconnectListeners.delete(callback);
 }
 
-// Safe fetch wrapper with timeout and session header
+export function isBackendOnline() {
+  return connectionState === 'ONLINE';
+}
+
+export function getConnectionState() {
+  return connectionState;
+}
+
+function handleConnectionSuccess() {
+  const wasOffline = connectionState !== 'ONLINE';
+  connectionState = 'ONLINE';
+  reconnectAttempt = 0;
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+  notifyConnectivity(true, 'ONLINE');
+  if (wasOffline) {
+    reconnectListeners.forEach((cb) => {
+      try { cb(); } catch (e) { console.error('Reconnect listener error', e); }
+    });
+  }
+}
+
+function handleConnectionFailure(reason = '') {
+  if (connectionState === 'ONLINE') {
+    connectionState = 'CONNECTING';
+    notifyConnectivity(false, 'CONNECTING', 'Backend unavailable. Attempting auto-reconnect...');
+  }
+  scheduleHealthPoll();
+}
+
+function scheduleHealthPoll() {
+  if (reconnectTimer) return;
+  // Exponential backoff: 2s, 4s, 8s, 16s, capped at 30s
+  const backoffSec = Math.min(30, Math.pow(2, reconnectAttempt) * 2);
+  reconnectTimer = setTimeout(async () => {
+    reconnectTimer = null;
+    try {
+      const controller = new AbortController();
+      const tid = setTimeout(() => controller.abort(), 6000);
+      const res = await fetch(HEALTH_URL, { signal: controller.signal });
+      clearTimeout(tid);
+      if (res.ok) {
+        handleConnectionSuccess();
+        return;
+      }
+    } catch {
+      // Still unreachable
+    }
+
+    reconnectAttempt++;
+    if (reconnectAttempt >= MAX_CONNECTING_RETRIES) {
+      connectionState = 'OFFLINE';
+      notifyConnectivity(false, 'OFFLINE', 'Backend offline. Operating in resilient local engine.');
+    }
+    // Continue periodic background polling every 30 seconds
+    scheduleHealthPoll();
+  }, backoffSec * 1000);
+}
+
+export class RequestCancelledError extends Error {
+  constructor(message = 'Request cancelled by user action') {
+    super(message);
+    this.name = 'RequestCancelledError';
+    this.isCancelled = true;
+  }
+}
+
+// Safe fetch wrapper with timeout, combined cancellation and error classification
 async function fetchWithTimeout(url, options = {}, timeoutMs = 12000) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const timeoutController = new AbortController();
+  let isTimedOut = false;
+  const timeoutId = setTimeout(() => {
+    isTimedOut = true;
+    timeoutController.abort();
+  }, timeoutMs);
+
+  const callerSignal = options.signal;
+  const onCallerAbort = () => {
+    timeoutController.abort();
+  };
+
+  if (callerSignal) {
+    if (callerSignal.aborted) {
+      clearTimeout(timeoutId);
+      throw new RequestCancelledError();
+    }
+    callerSignal.addEventListener('abort', onCallerAbort, { once: true });
+  }
 
   const headers = {
     'X-Session-ID': getSessionId(),
@@ -48,205 +151,112 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 12000) {
     const res = await fetch(url, {
       ...options,
       headers,
-      signal: options.signal || controller.signal,
+      signal: timeoutController.signal,
     });
     clearTimeout(timeoutId);
+    if (callerSignal) {
+      callerSignal.removeEventListener('abort', onCallerAbort);
+    }
     if (!res.ok) {
       throw new Error(`HTTP ${res.status}: ${res.statusText}`);
     }
-    notifyConnectivity(true);
+    handleConnectionSuccess();
     return res;
   } catch (err) {
     clearTimeout(timeoutId);
-    if (err.name === 'AbortError') {
-      console.warn(`Request timed out after ${timeoutMs}ms: ${url}`);
+    if (callerSignal) {
+      callerSignal.removeEventListener('abort', onCallerAbort);
     }
-    notifyConnectivity(false);
+
+    // Distinguish between intentional cancellation and genuine network failure
+    if (callerSignal?.aborted) {
+      throw new RequestCancelledError();
+    }
+
+    if (isTimedOut) {
+      console.warn(`Request timed out after ${timeoutMs}ms: ${url}`);
+      handleConnectionFailure('Timeout');
+      const timeoutErr = new Error(`Request timed out after ${timeoutMs}ms`);
+      timeoutErr.name = 'TimeoutError';
+      throw timeoutErr;
+    }
+
+    // Network / Server failure
+    handleConnectionFailure(err.message);
     throw err;
   }
 }
 
-// Canonical FinTrust Security Controls Fallback
-export const FINTRUST_FALLBACK_CONTROLS = [
-  {
-    id: "CTRL-001",
-    name: "Patch Critical KEV Vulnerabilities (Payment & API)",
-    description: "Automated patch deployment and emergency firmware upgrade across Internet-facing Payment servers and API Gateways.",
-    category: "Vulnerability Mgmt",
-    cost: 1500000.0,
-    risk_reduction: 3500000.0,
-    effectiveness: 0.75,
-    target_asset_ids: ["AST-001", "AST-004"],
-    is_implemented: false,
-    rosi: 2.33,
-    iso27001_mapping: "A.12.6.1 Management of technical vulnerabilities",
-    nist_csf_mapping: "PR.IP-12 Vulnerability Management",
-    rbi_mapping: "RBI Section 4: Patch Management",
-    sebi_mapping: "SEBI CSCRF Chapter 3: Vulnerability Remediation"
-  },
-  {
-    id: "CTRL-002",
-    name: "Deploy Phishing-Resistant Hardware MFA (FIDO2)",
-    description: "Enforce hardware security tokens (YubiKey/FIDO2) for all administrative logins and VPN access.",
-    category: "Identity & Access",
-    cost: 600000.0,
-    risk_reduction: 1800000.0,
-    effectiveness: 0.85,
-    target_asset_ids: ["AST-001", "AST-003", "AST-005"],
-    is_implemented: false,
-    rosi: 3.00,
-    iso27001_mapping: "A.9.4.2 Secure log-on procedures & MFA",
-    nist_csf_mapping: "PR.AC-7 Multi-factor Authentication",
-    rbi_mapping: "RBI Section 5: Two-Factor Authentication",
-    sebi_mapping: "SEBI CSCRF Chapter 2: Identity & Privileged Access"
-  },
-  {
-    id: "CTRL-003",
-    name: "Next-Gen EDR & XDR Agent Upgrade",
-    description: "Deploy behavioral Endpoint Detection and Response agents with real-time ransomware blocking on Domain Controllers and servers.",
-    category: "Endpoint Security",
-    cost: 1000000.0,
-    risk_reduction: 1600000.0,
-    effectiveness: 0.70,
-    target_asset_ids: ["AST-001", "AST-002", "AST-005"],
-    is_implemented: false,
-    rosi: 1.60,
-    iso27001_mapping: "A.12.2.1 Protection against malware",
-    nist_csf_mapping: "DE.CM-4 Malicious Code Detection",
-    rbi_mapping: "RBI Section 7: Endpoint Protection",
-    sebi_mapping: "SEBI CSCRF Chapter 4: Endpoint Threat Detection"
-  },
-  {
-    id: "CTRL-004",
-    name: "Micro-segmentation & Zero Trust Network Architecture",
-    description: "Isolate Core Database and Payment Server with granular East-West software-defined network segmentation.",
-    category: "Network Security",
-    cost: 1200000.0,
-    risk_reduction: 2200000.0,
-    effectiveness: 0.80,
-    target_asset_ids: ["AST-001", "AST-002", "AST-004"],
-    is_implemented: false,
-    rosi: 1.83,
-    iso27001_mapping: "A.13.1.3 Segregation in networks",
-    nist_csf_mapping: "PR.AC-5 Network Segmentation",
-    rbi_mapping: "RBI Section 3: Network Architecture",
-    sebi_mapping: "SEBI CSCRF Chapter 2: Zero Trust Network"
-  },
-  {
-    id: "CTRL-005",
-    name: "Cloud SIEM & Automated SOAR Playbooks",
-    description: "Centralized log ingestion with automated playbooks for immediate isolation of compromised accounts.",
-    category: "Security Monitoring",
-    cost: 800000.0,
-    risk_reduction: 1100000.0,
-    effectiveness: 0.65,
-    target_asset_ids: ["AST-001", "AST-002", "AST-003", "AST-004", "AST-005"],
-    is_implemented: false,
-    rosi: 1.38,
-    iso27001_mapping: "A.12.4.1 Event logging & SIEM",
-    nist_csf_mapping: "DE.AE-1 Anomaly and Event Detection",
-    rbi_mapping: "RBI Section 9: Security Operations Centre (SOC)",
-    sebi_mapping: "SEBI CSCRF Chapter 4: Continuous Cyber Monitoring"
-  },
-  {
-    id: "CTRL-006",
-    name: "Database Activity Monitoring (DAM) & Field Encryption",
-    description: "Real-time query inspection, masking, and field-level encryption for sensitive Aadhaar, PAN, and banking cardholder records.",
-    category: "Data Protection",
-    cost: 700000.0,
-    risk_reduction: 1400000.0,
-    effectiveness: 0.80,
-    target_asset_ids: ["AST-002"],
-    is_implemented: false,
-    rosi: 2.00,
-    iso27001_mapping: "A.10.1.1 Cryptographic controls",
-    nist_csf_mapping: "PR.DS-1 Data-at-Rest Protection",
-    rbi_mapping: "RBI Section 6: Data Protection Standards",
-    sebi_mapping: "SEBI CSCRF Chapter 3: Sensitive Data Encryption"
-  },
-  {
-    id: "CTRL-007",
-    name: "API Security Gateway with Web Application Firewall (WAF)",
-    description: "Deep API payload inspection, schema compliance enforcement, and DDoS protection for Internet Banking gateways.",
-    category: "Application Security",
-    cost: 500000.0,
-    risk_reduction: 950000.0,
-    effectiveness: 0.75,
-    target_asset_ids: ["AST-004"],
-    is_implemented: false,
-    rosi: 1.90,
-    iso27001_mapping: "A.14.1.2 Securing application services",
-    nist_csf_mapping: "PR.PT-4 Network and Host Protection",
-    rbi_mapping: "RBI Section 4: Web Application Security",
-    sebi_mapping: "SEBI CSCRF Chapter 3: WAF & Perimeter Defenses"
-  },
-  {
-    id: "CTRL-008",
-    name: "Immutable Air-Gapped Ransomware Backups",
-    description: "Write-Once-Read-Many (WORM) storage architecture with out-of-band dual authorization to guarantee recovery against destructive ransomware.",
-    category: "Resilience & Recovery",
-    cost: 400000.0,
-    risk_reduction: 600000.0,
-    effectiveness: 0.85,
-    target_asset_ids: ["AST-006"],
-    is_implemented: false,
-    rosi: 1.50,
-    iso27001_mapping: "A.12.3.1 Information backup",
-    nist_csf_mapping: "RC.RP-1 Recovery Plan Execution",
-    rbi_mapping: "RBI Section 8: Backup & Disaster Recovery",
-    sebi_mapping: "SEBI CSCRF Chapter 5: Disaster Recovery"
-  }
-];
-
-// Fallback 0/1 Knapsack Solver for resilient local optimization
-function solveLocalKnapsack(budget = 2500000, controls = FINTRUST_FALLBACK_CONTROLS, baselineEal = 18400000) {
+// Local 0/1 Knapsack fallback solver
+// Uses Exhaustive Search for small sets, and DP array for sets > 16 to protect performance
+export function solveLocalKnapsack(budget, controls = FINTRUST_FALLBACK_CONTROLS, baselineEal = 18400000) {
   const n = controls.length;
-  if (budget <= 0) {
-    return {
-      budget,
-      total_cost: 0,
-      total_risk_reduction: 0,
-      remaining_risk: baselineEal,
-      overall_rosi: 0,
-      baseline_eal: baselineEal,
-      optimized_eal: baselineEal,
-      selected_controls: [],
-      unselected_controls: controls,
-      optimization_summary: "No budget allocated."
-    };
-  }
-
-  let bestCost = 0;
-  let bestReduction = 0;
   let bestCombo = [];
+  let bestReduction = 0;
+  let bestCost = 0;
+  let solverName = '0/1 Knapsack Exhaustive Search (Local Engine)';
 
-  const numSubsets = 1 << n;
-  for (let mask = 0; mask < numSubsets; mask++) {
-    let currCost = 0;
-    let currRed = 0;
-    let currItems = [];
+  if (n <= 16) {
+    // Safe exhaustive enumeration
+    const totalSubsets = 1 << n;
+    for (let mask = 0; mask < totalSubsets; mask++) {
+      let currentCost = 0;
+      let currentReduction = 0;
+      const currentCombo = [];
 
-    for (let i = 0; i < n; i++) {
-      if ((mask >> i) & 1) {
-        currCost += controls[i].cost;
-        currRed += controls[i].risk_reduction;
-        currItems.push(controls[i]);
+      for (let i = 0; i < n; i++) {
+        if ((mask & (1 << i)) !== 0) {
+          currentCost += controls[i].cost;
+          currentReduction += controls[i].risk_reduction;
+          currentCombo.push(controls[i]);
+        }
+      }
+
+      if (currentCost <= budget) {
+        if (currentReduction > bestReduction || (currentReduction === bestReduction && currentCost < bestCost)) {
+          bestReduction = currentReduction;
+          bestCost = currentCost;
+          bestCombo = currentCombo;
+        }
+      }
+    }
+  } else {
+    // Dynamic Programming array for large control sets
+    solverName = '0/1 Knapsack Dynamic Programming (Local Engine)';
+    const scale = 50000;
+    const scaledBudget = Math.floor(budget / scale);
+    const dp = Array.from({ length: n + 1 }, () => new Float64Array(scaledBudget + 1));
+    const keep = Array.from({ length: n + 1 }, () => new Uint8Array(scaledBudget + 1));
+
+    for (let i = 1; i <= n; i++) {
+      const c = controls[i - 1];
+      const w = Math.ceil(c.cost / scale);
+      const v = c.risk_reduction;
+      for (let b = 0; b <= scaledBudget; b++) {
+        if (w <= b && dp[i - 1][b - w] + v > dp[i - 1][b]) {
+          dp[i][b] = dp[i - 1][b - w] + v;
+          keep[i][b] = 1;
+        } else {
+          dp[i][b] = dp[i - 1][b];
+          keep[i][b] = 0;
+        }
       }
     }
 
-    if (currCost <= budget) {
-      if (currRed > bestReduction || (currRed === bestReduction && currCost < bestCost)) {
-        bestReduction = currRed;
-        bestCost = currCost;
-        bestCombo = currItems;
+    let b = scaledBudget;
+    for (let i = n; i > 0; i--) {
+      if (keep[i][b]) {
+        bestCombo.push(controls[i - 1]);
+        bestCost += controls[i - 1].cost;
+        bestReduction += controls[i - 1].risk_reduction;
+        b -= Math.ceil(controls[i - 1].cost / scale);
       }
     }
   }
 
-  const selectedIds = new Set(bestCombo.map(c => c.id));
-  const unselected = controls.filter(c => !selectedIds.has(c.id));
-  const overallRosi = bestCost > 0 ? Number((bestReduction / bestCost).toFixed(2)) : 0;
+  const unselected = controls.filter((c) => !bestCombo.some((s) => s.id === c.id));
   const remainingRisk = Math.max(0, baselineEal - bestReduction);
+  const overallRosi = bestCost > 0 ? Number((bestReduction / bestCost).toFixed(2)) : 0;
 
   return {
     budget,
@@ -258,69 +268,35 @@ function solveLocalKnapsack(budget = 2500000, controls = FINTRUST_FALLBACK_CONTR
     optimized_eal: remainingRisk,
     selected_controls: bestCombo.sort((a, b) => b.rosi - a.rosi),
     unselected_controls: unselected.sort((a, b) => b.rosi - a.rosi),
-    optimization_summary: `Optimized portfolio selected ${bestCombo.length} controls utilizing ₹${(bestCost/100000).toFixed(1)}L of ₹${(budget/100000).toFixed(1)}L budget, yielding ₹${(bestReduction/100000).toFixed(1)}L in risk reduction (ROSI ${overallRosi}x).`
+    solver_engine: solverName,
+    optimization_summary: `Optimized portfolio selected ${bestCombo.length} controls utilizing ₹${(bestCost / 100000).toFixed(1)}L of ₹${(budget / 100000).toFixed(1)}L budget, yielding ₹${(bestReduction / 100000).toFixed(1)}L in risk reduction (ROSI ${overallRosi}x).`
   };
 }
 
 let activeOptimizeAbortController = null;
+let optimizeRequestSeq = 0;
 
 export const api = {
   async getDashboard() {
     try {
       const res = await fetchWithTimeout(`${API_BASE_URL}/dashboard`);
-      return await res.json();
+      const data = await res.json();
+      return { ...data, solver_engine: '0/1 Knapsack Dynamic Programming (Backend API)' };
     } catch (err) {
-      console.warn('Backend connection failed, using local runtime fallback', err);
-      // Canonical fallback data grounded in simulation
+      if (err instanceof RequestCancelledError) return null;
+      console.warn('Backend connection failed, using canonical local fallback', err);
       const fallbackSim = simulateMonteCarloClient({ iterations: 10000 });
       const optRes = solveLocalKnapsack(2500000);
       return {
-        organization: {
-          name: "FinTrust Bank Ltd.",
-          industry: "Banking & Financial Services",
-          region: "India (RBI / SEBI Regulated)",
-          annual_revenue_inr: 2500000000.0,
-          allocated_security_budget_inr: 2500000.0,
-          data_classification: "Synthetic Demo Data"
-        },
-        enterprise_risk_score: 70,
-        expected_annual_loss: 18400000,
+        ...CANONICAL_DASHBOARD,
         p90_loss: fallbackSim.p90_loss,
         var_95: fallbackSim.var_95,
         p99_loss: fallbackSim.p99_loss,
-        security_budget: 2500000,
         potential_risk_reduction: optRes.total_risk_reduction,
         residual_risk_target: 18400000 - optRes.total_risk_reduction,
-        asset_count: 6,
-        vulnerability_count: 8,
-        active_controls_count: 0,
-        pending_controls_count: 8,
-        risk_trend_12m: [
-          { month: "Oct", risk_score: 58, eal: 13248000 },
-          { month: "Nov", risk_score: 61, eal: 13984000 },
-          { month: "Dec", risk_score: 64, eal: 14904000 },
-          { month: "Jan", risk_score: 63, eal: 14536000 },
-          { month: "Feb", risk_score: 67, eal: 16192000 },
-          { month: "Mar", risk_score: 69, eal: 16928000 },
-          { month: "Apr", risk_score: 70, eal: 17296000 },
-          { month: "May", risk_score: 71, eal: 17664000 },
-          { month: "Jun", risk_score: 68, eal: 16560000 },
-          { month: "Jul", risk_score: 70, eal: 17480000 },
-          { month: "Aug", risk_score: 70, eal: 18032000 },
-          { month: "Sep (Live)", risk_score: 70, eal: 18400000 }
-        ],
-        eal_by_asset: FINTRUST_FALLBACK_ASSETS,
-        top_risk_drivers: [
-          { driver: "Known Exploited Vulnerabilities (KEV)", weight: 95, affected_assets: "Payment Server, API Gateway", severity: "Critical" },
-          { driver: "Public Internet Exposure", weight: 92, affected_assets: "Payment Server, VPN, API Gateway", severity: "Critical" },
-          { driver: "Weak / Phishable MFA Posture", weight: 85, affected_assets: "Payment Server, VPN Gateway", severity: "High" },
-          { driver: "Core Financial Asset Criticality", weight: 95, affected_assets: "Customer Database, Payment Server", severity: "High" },
-          { driver: "Patch Gap & Delayed Remediation", weight: 80, affected_assets: "Internal Active Directory, Payment Server", severity: "Medium" }
-        ],
-        top_vulnerabilities: [],
         recommended_portfolio_summary: optRes,
-        recent_events: [],
-        data_classification: "Synthetic Demo Data (Offline Fallback Engine)"
+        top_vulnerabilities: CANONICAL_VULNERABILITIES.slice(0, 5),
+        data_classification: 'Synthetic Demo Data (Operating in Local Engine Mode)'
       };
     }
   },
@@ -330,8 +306,9 @@ export const api = {
       const res = await fetchWithTimeout(`${API_BASE_URL}/assets`);
       return await res.json();
     } catch (err) {
-      console.warn('Failed to fetch assets, returning fallback catalog', err);
-      return FINTRUST_FALLBACK_ASSETS;
+      if (err instanceof RequestCancelledError) return null;
+      console.warn('Failed to fetch assets, returning canonical catalog', err);
+      return CANONICAL_ASSETS;
     }
   },
 
@@ -340,14 +317,15 @@ export const api = {
       const res = await fetchWithTimeout(`${API_BASE_URL}/assets/${assetId}`);
       return await res.json();
     } catch (err) {
+      if (err instanceof RequestCancelledError) return null;
       console.warn('Failed to fetch asset detail', err);
-      const ast = FINTRUST_FALLBACK_ASSETS.find(a => a.id === assetId) || FINTRUST_FALLBACK_ASSETS[0];
+      const ast = CANONICAL_ASSETS.find((a) => a.id === assetId) || CANONICAL_ASSETS[0];
       return {
         asset: ast,
-        vulnerabilities: [],
-        recommended_controls: FINTRUST_FALLBACK_CONTROLS.filter(c => c.target_asset_ids.includes(ast.id)),
+        vulnerabilities: CANONICAL_VULNERABILITIES.filter((v) => v.affected_asset_ids?.includes(ast.id)),
+        recommended_controls: CANONICAL_CONTROLS.filter((c) => c.target_asset_ids.includes(ast.id)),
         formula_explanation: {
-          formula: "EAL = Incident Probability × Total Financial Impact",
+          formula: 'EAL = Incident Probability × Total Financial Impact',
           incident_probability_pct: `${(ast.incident_probability * 100).toFixed(1)}%`,
           financial_impact_inr: ast.total_financial_impact,
           eal_inr: ast.eal,
@@ -366,8 +344,9 @@ export const api = {
       const res = await fetchWithTimeout(`${API_BASE_URL}/vulnerabilities`);
       return await res.json();
     } catch (err) {
-      console.warn('Failed to fetch vulnerabilities', err);
-      return [];
+      if (err instanceof RequestCancelledError) return null;
+      console.warn('Failed to fetch vulnerabilities, returning canonical catalog', err);
+      return CANONICAL_VULNERABILITIES;
     }
   },
 
@@ -376,18 +355,19 @@ export const api = {
       const res = await fetchWithTimeout(`${API_BASE_URL}/controls`);
       return await res.json();
     } catch (err) {
-      console.warn('Failed to fetch controls, returning fallback list', err);
-      return FINTRUST_FALLBACK_CONTROLS;
+      if (err instanceof RequestCancelledError) return null;
+      console.warn('Failed to fetch controls, returning canonical catalog', err);
+      return CANONICAL_CONTROLS;
     }
   },
 
   async runMonteCarlo(params = {}) {
-    const iterations = params.iterations || 10000;
-    const volatilitySigma = params.volatility_sigma !== undefined ? params.volatility_sigma : 0.35;
-    const lossMultiplier = params.loss_multiplier !== undefined ? params.loss_multiplier : 1.0;
-    const controlEffectiveness = params.control_effectiveness !== undefined ? params.control_effectiveness : 0.0;
-    const probabilityModifier = params.probability_modifier !== undefined ? params.probability_modifier : 1.0;
-    const timeHorizonYears = params.time_horizon_years !== undefined ? params.time_horizon_years : 1;
+    const iterations = Math.min(50000, Math.max(100, params.iterations || 10000));
+    const volatilitySigma = Math.min(1.0, Math.max(0.1, params.volatility_sigma !== undefined ? params.volatility_sigma : 0.35));
+    const lossMultiplier = Math.min(5.0, Math.max(0.1, params.loss_multiplier !== undefined ? params.loss_multiplier : 1.0));
+    const controlEffectiveness = Math.min(0.95, Math.max(0.0, params.control_effectiveness !== undefined ? params.control_effectiveness : 0.0));
+    const probabilityModifier = Math.min(3.0, Math.max(0.1, params.probability_modifier !== undefined ? params.probability_modifier : 1.0));
+    const timeHorizonYears = Math.min(5, Math.max(1, params.time_horizon_years !== undefined ? params.time_horizon_years : 1));
 
     const query = new URLSearchParams({
       iterations: iterations.toString(),
@@ -402,10 +382,12 @@ export const api = {
       const res = await fetchWithTimeout(`${API_BASE_URL}/simulate?${query.toString()}`, {
         method: 'POST'
       }, 15000);
-      return await res.json();
+      const data = await res.json();
+      return { ...data, engine: 'NumPy Vectorized Log-Normal Engine (Backend API)' };
     } catch (err) {
+      if (err instanceof RequestCancelledError) return null;
       console.warn('Backend unavailable, executing resilient client-side Monte Carlo engine', err);
-      return simulateMonteCarloClient({
+      const fallback = simulateMonteCarloClient({
         iterations,
         volatilitySigma,
         lossMultiplier,
@@ -413,25 +395,33 @@ export const api = {
         probabilityModifier,
         timeHorizonYears
       });
+      return { ...fallback, engine: 'Client-Side Box-Muller Engine (Local Fallback)' };
     }
   },
 
   async optimizeBudget(budget) {
+    const seqId = ++optimizeRequestSeq;
+
     if (activeOptimizeAbortController) {
       activeOptimizeAbortController.abort();
     }
     activeOptimizeAbortController = new AbortController();
+    const signal = activeOptimizeAbortController.signal;
 
     try {
       const res = await fetchWithTimeout(`${API_BASE_URL}/optimize`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ budget }),
-        signal: activeOptimizeAbortController.signal
+        signal
       });
-      return await res.json();
+      const data = await res.json();
+      if (seqId !== optimizeRequestSeq) return null; // Stale request superseded
+      return { ...data, solver_engine: '0/1 Knapsack Dynamic Programming (Backend API)' };
     } catch (err) {
-      if (err.name === 'AbortError') return null;
+      if (err instanceof RequestCancelledError || signal.aborted || seqId !== optimizeRequestSeq) {
+        return null;
+      }
       console.warn('Backend optimization failed, using local knapsack engine', err);
       return solveLocalKnapsack(budget);
     }
@@ -446,8 +436,9 @@ export const api = {
       });
       return await res.json();
     } catch (err) {
+      if (err instanceof RequestCancelledError) return null;
       console.warn('Failed to evaluate what-if, computing locally', err);
-      const active = FINTRUST_FALLBACK_CONTROLS.filter(c => enabledControlIds.includes(c.id));
+      const active = CANONICAL_CONTROLS.filter((c) => enabledControlIds.includes(c.id));
       const totalCost = active.reduce((sum, c) => sum + c.cost, 0);
       const rawRed = active.reduce((sum, c) => sum + c.risk_reduction, 0);
       const cappedRed = Math.min(18400000, rawRed);
@@ -476,8 +467,9 @@ export const api = {
       const res = await fetchWithTimeout(`${API_BASE_URL}/attack-path`);
       return await res.json();
     } catch (err) {
-      console.warn('Failed to fetch attack path', err);
-      return null;
+      if (err instanceof RequestCancelledError) return null;
+      console.warn('Failed to fetch attack path, using canonical fallback', err);
+      return CANONICAL_ATTACK_PATH;
     }
   },
 
@@ -486,8 +478,9 @@ export const api = {
       const res = await fetchWithTimeout(`${API_BASE_URL}/compliance`);
       return await res.json();
     } catch (err) {
-      console.warn('Failed to fetch compliance mappings', err);
-      return [];
+      if (err instanceof RequestCancelledError) return null;
+      console.warn('Failed to fetch compliance mappings, using canonical fallback', err);
+      return CANONICAL_COMPLIANCE;
     }
   },
 
@@ -496,8 +489,9 @@ export const api = {
       const res = await fetchWithTimeout(`${API_BASE_URL}/events`);
       return await res.json();
     } catch (err) {
-      console.warn('Failed to fetch events', err);
-      return [];
+      if (err instanceof RequestCancelledError) return null;
+      console.warn('Failed to fetch events, using canonical fallback', err);
+      return CANONICAL_EVENTS;
     }
   },
 
@@ -508,23 +502,24 @@ export const api = {
       });
       return await res.json();
     } catch (err) {
+      if (err instanceof RequestCancelledError) return null;
       console.warn('Failed to simulate event', err);
-      // Local fallback simulation
+      const ts = Date.now();
       return {
-        status: "success",
+        status: 'success',
         generated_event: {
-          id: `EVT-${Date.now().toString(36).toUpperCase()}`,
+          id: `EVT-${(ts % 1000000).toString().padStart(6, '0')}-999`,
           timestamp: new Date().toISOString(),
-          source: "Threat Intel (CISA KEV)",
-          severity: "Critical",
-          description: "Simulated Alert: Active exploit detected on Internet-facing Payment Server",
-          affected_asset: "Internet-facing Payment Server",
-          event_type: "exploit_signal",
+          source: 'Threat Intel (CISA KEV)',
+          severity: 'Critical',
+          description: 'Simulated Alert: Active exploit detected on Internet-facing Payment Server',
+          affected_asset: 'Internet-facing Payment Server',
+          event_type: 'exploit_signal',
           raw_payload: { simulation_trigger: true }
         },
         updated_enterprise_eal: 20400000,
         updated_enterprise_risk_score: 73,
-        message: "New telemetry event ingested (Critical). Enterprise risk recalculated to ₹2.04 Cr (Score: 73/100)."
+        message: 'New telemetry event ingested (Critical). Enterprise risk recalculated to ₹2.04 Cr (Score: 73/100).'
       };
     }
   },
@@ -536,11 +531,9 @@ export const api = {
       });
       return await res.json();
     } catch (err) {
-      console.warn('Failed to reset state', err);
-      return {
-        status: "reset_successful",
-        message: "Runtime state reset to default FinTrust Bank baseline (EAL ₹1.84 Cr, Score 70)."
-      };
+      if (err instanceof RequestCancelledError) return null;
+      console.warn('Failed to reset state on backend', err);
+      throw err;
     }
   }
 };

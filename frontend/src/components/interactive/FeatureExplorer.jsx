@@ -23,7 +23,7 @@ const FEATURES = [
     title: 'FAIR Risk Quantification',
     icon: Calculator,
     tagline: 'Zero black-box risk scoring. Real rupee financial impact.',
-    description: 'Decomposes cyber risk into Incident Likelihood × Financial Severity across 5 deterministic loss categories: Downtime, Data Breach, Regulatory DPDP fines, Incident Recovery, and Customer Churn.',
+    description: 'Decomposes cyber risk into Incident Likelihood × Financial Severity across 5 deterministic loss categories: Downtime, Data Breach, Regulatory DPDP fines, Incident Recovery, and Business Disruption.',
     previewTitle: 'Internet-facing Payment Server (AST-001) FAIR Breakdown',
     stat1: { label: 'Likelihood', value: '18.0% / yr' },
     stat2: { label: 'Single Loss Event', value: '₹4.00 Cr' },

@@ -360,7 +360,7 @@ export default function LandingPage({ onLaunchConsole, dashboardData }) {
               stage: '02',
               title: 'Quantify Rupee Exposure',
               icon: Calculator,
-              desc: 'Applies FAIR framework mathematical decomposition across 5 deterministic loss heads: Downtime, Data Breach, DPDP Fines, Recovery, and Churn.'
+              desc: 'Applies FAIR framework mathematical decomposition across 5 deterministic loss heads: Downtime, Data Breach, DPDP Fines, Recovery, and Business Disruption.'
             },
             {
               stage: '03',

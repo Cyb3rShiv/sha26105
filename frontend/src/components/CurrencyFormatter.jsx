@@ -5,24 +5,29 @@ export function formatINR(val, options = {}) {
   const num = Number(val);
   const { compact = true, decimals = 2 } = options;
 
+  const isNegative = num < 0;
+  const absNum = Math.abs(num);
+  const signPrefix = isNegative ? '-' : '';
+
   if (!compact) {
-    return new Intl.NumberFormat('en-IN', {
+    const formatted = new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
       maximumFractionDigits: 0
-    }).format(num);
+    }).format(absNum);
+    return `${signPrefix}${formatted}`;
   }
 
-  if (Math.abs(num) >= 10000000) {
-    return `₹${(num / 10000000).toFixed(decimals)} Cr`;
+  if (absNum >= 10000000) {
+    return `${signPrefix}₹${(absNum / 10000000).toFixed(decimals)} Cr`;
   }
-  if (Math.abs(num) >= 100000) {
-    return `₹${(num / 100000).toFixed(decimals)} L`;
+  if (absNum >= 100000) {
+    return `${signPrefix}₹${(absNum / 100000).toFixed(decimals)} L`;
   }
-  if (Math.abs(num) >= 1000) {
-    return `₹${(num / 1000).toFixed(decimals)} K`;
+  if (absNum >= 1000) {
+    return `${signPrefix}₹${(absNum / 1000).toFixed(decimals)} K`;
   }
-  return `₹${num.toFixed(0)}`;
+  return `${signPrefix}₹${absNum.toFixed(0)}`;
 }
 
 export default function CurrencyFormatter({ value, compact = true, decimals = 2, className = "" }) {

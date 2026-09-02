@@ -137,6 +137,10 @@ export default function OptimizerView({ onNavigate }) {
             <input
               type="range"
               aria-label="Security budget in rupees"
+              aria-valuemin={500000}
+              aria-valuemax={7500000}
+              aria-valuenow={budget}
+              aria-valuetext={`₹${(budget / 100000).toFixed(1)} Lakhs`}
               min="500000"
               max="7500000"
               step="100000"
@@ -231,12 +235,20 @@ export default function OptimizerView({ onNavigate }) {
       {/* ===== Knapsack Dynamic Programming Proof ===== */}
       {optimizationResult && (
         <Reveal delay={100}>
-          <div className="p-4 rounded-xl bg-teal-50 border border-teal-200 flex items-start gap-3 text-xs">
-            <Sparkles className="w-4 h-4 text-teal-700 shrink-0 mt-0.5" />
-            <p className="leading-relaxed text-teal-900">
-              <strong className="font-mono font-bold">Knapsack Dynamic Optimization Proof: </strong>
-              <span>{optimizationResult.optimization_summary}</span>
-            </p>
+          <div className="p-4 rounded-xl bg-teal-50 border border-teal-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+            <div className="flex items-start gap-2.5">
+              <Sparkles className="w-4 h-4 text-teal-700 shrink-0 mt-0.5" />
+              <p className="leading-relaxed text-teal-900">
+                <strong className="font-mono font-bold">Optimization Proof: </strong>
+                <span>{optimizationResult.optimization_summary}</span>
+              </p>
+            </div>
+            <div className="shrink-0">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-white border border-teal-300 text-[11px] font-mono font-bold text-teal-900 shadow-2xs">
+                <span className="w-1.5 h-1.5 rounded-full bg-teal-600 animate-pulse" />
+                {optimizationResult.solver_engine || '0/1 Knapsack Dynamic Programming (Backend API)'}
+              </span>
+            </div>
           </div>
         </Reveal>
       )}

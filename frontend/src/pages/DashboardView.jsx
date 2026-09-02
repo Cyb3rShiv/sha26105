@@ -110,6 +110,18 @@ export default function DashboardView({ dashboardData, onNavigate, onSimulateEve
   );
   const primaryShare = totalEal > 0 ? ((primaryAsset.eal / totalEal) * 100).toFixed(1) : '0';
 
+  const greeting = (() => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) return 'Good morning';
+    if (hour >= 12 && hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  })();
+
+  const peakMonthObj = risk_trend_12m.length > 0
+    ? risk_trend_12m.reduce((max, m) => (m.eal > max.eal ? m : max), risk_trend_12m[0])
+    : { month: 'Live', eal: expected_annual_loss };
+  const peakMonthInsight = `Peak exposure was ${formatINR(peakMonthObj.eal)} (${peakMonthObj.month}), driven by unpatched KEV vulnerabilities.`;
+
   const kpis = [
     {
       title: "Enterprise Risk Score",
@@ -183,7 +195,7 @@ export default function DashboardView({ dashboardData, onNavigate, onSimulateEve
             </div>
 
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-slate-900 mt-1 leading-[1.2]">
-              Good afternoon, CISO.{' '}
+              {greeting}, CISO.{' '}
               <span className="text-teal-700 block sm:inline">
                 Here's your live financial risk posture.
               </span>
@@ -366,7 +378,7 @@ export default function DashboardView({ dashboardData, onNavigate, onSimulateEve
               </ResponsiveContainer>
             </div>
             <div className="text-[11.5px] text-slate-500 border-t border-slate-100 mx-2 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <span>Q4 spike driven by unpatched KEV vulnerabilities on Payment Gateway.</span>
+              <span>{peakMonthInsight}</span>
               <button
                 onClick={() => onNavigate('monte_carlo')}
                 className="text-teal-700 hover:text-teal-900 font-mono flex items-center gap-1 text-[11.5px] font-bold shrink-0"

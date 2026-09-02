@@ -141,7 +141,7 @@ def get_dashboard(x_session_id: Optional[str] = Header(None)) -> Dict[str, Any]:
         {"month": "Jun", "risk_score": 68, "eal": round(total_eal * 0.90, 2)},
         {"month": "Jul", "risk_score": 70, "eal": round(total_eal * 0.95, 2)},
         {"month": "Aug", "risk_score": 70, "eal": round(total_eal * 0.98, 2)},
-        {"month": "Sep (Live)", "risk_score": avg_risk_score, "eal": total_eal}
+        {"month": datetime.now().strftime("%b (Live)"), "risk_score": avg_risk_score, "eal": total_eal}
     ]
 
     # EAL by Asset Chart Data
@@ -355,7 +355,11 @@ def simulate_new_security_event(request: Request, x_session_id: Optional[str] = 
         affected_ast["incident_probability"] = min(0.95, max(0.01, round(affected_ast["incident_probability"] + delta_p, 4)))
         affected_ast["total_financial_impact"] = max(1000000.0, affected_ast["total_financial_impact"] + delta_imp)
         affected_ast["eal"] = RiskEngine.calculate_eal(affected_ast["incident_probability"], affected_ast["total_financial_impact"])
-        affected_ast["risk_score"] = RiskEngine.calculate_risk_score(affected_ast["incident_probability"], affected_ast["total_financial_impact"])
+        affected_ast["risk_score"] = RiskEngine.calculate_risk_score(
+            affected_ast["incident_probability"],
+            affected_ast["total_financial_impact"],
+            asset_id=affected_ast.get("id")
+        )
         affected_ast["priority"] = "P1" if affected_ast["risk_score"] >= 80 else ("P2" if affected_ast["risk_score"] >= 65 else "P3")
 
     total_eal, avg_score = get_current_metrics(state)

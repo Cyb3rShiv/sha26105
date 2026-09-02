@@ -1,84 +1,12 @@
+import { CANONICAL_ASSETS } from '../data/fallback/canonicalData';
+
 /**
  * High-Precision Client-Side Monte Carlo Loss Simulator.
  * Uses Box-Muller transformation for log-normal loss severity sampling
  * and Bernoulli trial occurrence modeling across FinTrust Bank's canonical asset inventory.
  * Acts as an instant, zero-failure engine when running standalone or offline.
  */
-
-export const FINTRUST_FALLBACK_ASSETS = [
-  {
-    id: "AST-001",
-    name: "Internet-facing Payment Server",
-    short_name: "Payment Server",
-    type: "Transaction Processing Server",
-    criticality: "Critical",
-    exposure: "Internet",
-    incident_probability: 0.180,
-    total_financial_impact: 40000000,
-    eal: 7200000,
-    risk_score: 91
-  },
-  {
-    id: "AST-002",
-    name: "Customer Core Database",
-    short_name: "Core Database",
-    type: "Primary Relational Cluster",
-    criticality: "Critical",
-    exposure: "Internal",
-    incident_probability: 0.110,
-    total_financial_impact: 43636363,
-    eal: 4800000,
-    risk_score: 84
-  },
-  {
-    id: "AST-003",
-    name: "Employee VPN Gateway",
-    short_name: "VPN Gateway",
-    type: "Remote Access Appliance",
-    criticality: "High",
-    exposure: "Internet",
-    incident_probability: 0.090,
-    total_financial_impact: 34444444,
-    eal: 3100000,
-    risk_score: 78
-  },
-  {
-    id: "AST-004",
-    name: "Internet Banking API Gateway",
-    short_name: "API Gateway",
-    type: "API Microservices Gateway",
-    criticality: "High",
-    exposure: "Internet",
-    incident_probability: 0.065,
-    total_financial_impact: 32307692,
-    eal: 2100000,
-    risk_score: 71
-  },
-  {
-    id: "AST-005",
-    name: "Internal Active Directory (Domain Controller)",
-    short_name: "Active Directory",
-    type: "Identity Directory",
-    criticality: "High",
-    exposure: "Internal",
-    incident_probability: 0.040,
-    total_financial_impact: 20000000,
-    eal: 800000,
-    risk_score: 58
-  },
-  {
-    id: "AST-006",
-    name: "Backup & Disaster Recovery Server",
-    short_name: "Backup Server",
-    type: "Immutable Repository",
-    criticality: "Medium",
-    exposure: "Restricted",
-    incident_probability: 0.020,
-    total_financial_impact: 20000000,
-    eal: 400000,
-    risk_score: 38
-  }
-];
+export const FINTRUST_FALLBACK_ASSETS = CANONICAL_ASSETS;
 
 export function simulateMonteCarloClient({
   assets = [],
