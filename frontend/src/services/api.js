@@ -13,7 +13,84 @@ export const FINTRUST_FALLBACK_ASSETS = CANONICAL_ASSETS;
 export const FINTRUST_FALLBACK_CONTROLS = CANONICAL_CONTROLS;
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://fintrust-backend-vmml.onrender.com/api';
-const HEALTH_URL = API_BASE_URL.replace(/\/api$/, '') + '/health';
+
+export function getHealthUrl(baseUrl = API_BASE_URL) {
+  const clean = (baseUrl || '').replace(/\/+$/, '');
+  if (clean.endsWith('/api')) {
+    return `${clean}/health`;
+  }
+  return `${clean}/api/health`;
+}
+
+const HEALTH_URL = getHealthUrl(API_BASE_URL);
+
+// Normalization adapters ensuring schema stability and zero "undefined" renders
+export function normalizeAsset(a) {
+  if (!a) return null;
+  const name = a.name || a.id || 'Asset';
+  const shortName = a.short_name || (
+    name.split(' ')[0] + (name.includes('Server') ? ' Server' : name.includes('Database') ? ' DB' : name.includes('API') ? ' API' : '')
+  );
+  return {
+    ...a,
+    id: a.id,
+    name,
+    short_name: shortName,
+    eal: Number(a.eal || 0),
+    risk_score: Number(a.risk_score || 0),
+    criticality: a.criticality || 'Medium',
+    incident_probability: Number(a.incident_probability || 0)
+  };
+}
+
+export function normalizeVulnerability(v) {
+  if (!v) return null;
+  const cvssVal = Number(v.cvss ?? v.cvss_score ?? 0);
+  const epssVal = Number(v.epss_score ?? 0);
+  const isKev = Boolean(v.is_kev);
+
+  let driver = v.risk_driver;
+  if (!driver) {
+    if (isKev) {
+      driver = 'CISA Known Exploited';
+    } else if (epssVal > 0.5) {
+      driver = 'High EPSS Probability';
+    } else if (cvssVal >= 9.0) {
+      driver = 'Critical CVSS RCE';
+    } else if (cvssVal >= 7.0) {
+      driver = 'Elevated CVSS Exposure';
+    } else {
+      driver = 'Security Posture Gap';
+    }
+  }
+
+  let threat = v.threat_factor;
+  if (threat === undefined || threat === null) {
+    if (isKev) {
+      threat = (2.0 + epssVal * 2.0).toFixed(1);
+    } else if (cvssVal >= 9.0) {
+      threat = (1.5 + (cvssVal - 9.0) * 0.5).toFixed(1);
+    } else {
+      threat = (1.0 + (cvssVal / 10.0)).toFixed(1);
+    }
+  }
+
+  const priorityVal = v.priority || (v.severity === 'Critical' || cvssVal >= 9.0 ? 'P1' : cvssVal >= 7.0 ? 'P2' : 'P3');
+
+  return {
+    ...v,
+    id: v.id || v.cve_id,
+    cve_id: v.cve_id || v.id,
+    cvss: cvssVal,
+    cvss_score: cvssVal,
+    priority: priorityVal,
+    risk_driver: driver,
+    threat_factor: threat,
+    is_kev: isKev,
+    epss_score: epssVal,
+    severity: v.severity || (cvssVal >= 9.0 ? 'Critical' : cvssVal >= 7.0 ? 'High' : 'Medium')
+  };
+}
 
 // Generate or retrieve persistent demo session ID
 function getSessionId() {
@@ -281,7 +358,12 @@ export const api = {
     try {
       const res = await fetchWithTimeout(`${API_BASE_URL}/dashboard`);
       const data = await res.json();
-      return { ...data, solver_engine: '0/1 Knapsack Dynamic Programming (Backend API)' };
+      return {
+        ...data,
+        top_vulnerabilities: (data.top_vulnerabilities || []).map(normalizeVulnerability),
+        eal_by_asset: (data.eal_by_asset || []).map(normalizeAsset),
+        solver_engine: '0/1 Knapsack Dynamic Programming (Backend API)'
+      };
     } catch (err) {
       if (err instanceof RequestCancelledError) return null;
       console.warn('Backend connection failed, using canonical local fallback', err);
@@ -295,7 +377,8 @@ export const api = {
         potential_risk_reduction: optRes.total_risk_reduction,
         residual_risk_target: 18400000 - optRes.total_risk_reduction,
         recommended_portfolio_summary: optRes,
-        top_vulnerabilities: CANONICAL_VULNERABILITIES.slice(0, 5),
+        top_vulnerabilities: CANONICAL_VULNERABILITIES.slice(0, 5).map(normalizeVulnerability),
+        eal_by_asset: CANONICAL_ASSETS.map(normalizeAsset),
         data_classification: 'Synthetic Demo Data (Operating in Local Engine Mode)'
       };
     }
@@ -304,25 +387,30 @@ export const api = {
   async getAssets() {
     try {
       const res = await fetchWithTimeout(`${API_BASE_URL}/assets`);
-      return await res.json();
+      const data = await res.json();
+      return Array.isArray(data) ? data.map(normalizeAsset) : [];
     } catch (err) {
       if (err instanceof RequestCancelledError) return null;
       console.warn('Failed to fetch assets, returning canonical catalog', err);
-      return CANONICAL_ASSETS;
+      return CANONICAL_ASSETS.map(normalizeAsset);
     }
   },
 
   async getAssetDetail(assetId) {
     try {
       const res = await fetchWithTimeout(`${API_BASE_URL}/assets/${assetId}`);
-      return await res.json();
+      const data = await res.json();
+      if (data && data.asset) {
+        data.asset = normalizeAsset(data.asset);
+      }
+      return data;
     } catch (err) {
       if (err instanceof RequestCancelledError) return null;
       console.warn('Failed to fetch asset detail', err);
-      const ast = CANONICAL_ASSETS.find((a) => a.id === assetId) || CANONICAL_ASSETS[0];
+      const ast = normalizeAsset(CANONICAL_ASSETS.find((a) => a.id === assetId) || CANONICAL_ASSETS[0]);
       return {
         asset: ast,
-        vulnerabilities: CANONICAL_VULNERABILITIES.filter((v) => v.affected_asset_ids?.includes(ast.id)),
+        vulnerabilities: CANONICAL_VULNERABILITIES.filter((v) => v.affected_asset_ids?.includes(ast.id)).map(normalizeVulnerability),
         recommended_controls: CANONICAL_CONTROLS.filter((c) => c.target_asset_ids.includes(ast.id)),
         formula_explanation: {
           formula: 'EAL = Incident Probability × Total Financial Impact',
@@ -342,11 +430,12 @@ export const api = {
   async getVulnerabilities() {
     try {
       const res = await fetchWithTimeout(`${API_BASE_URL}/vulnerabilities`);
-      return await res.json();
+      const data = await res.json();
+      return Array.isArray(data) ? data.map(normalizeVulnerability) : [];
     } catch (err) {
       if (err instanceof RequestCancelledError) return null;
       console.warn('Failed to fetch vulnerabilities, returning canonical catalog', err);
-      return CANONICAL_VULNERABILITIES;
+      return CANONICAL_VULNERABILITIES.map(normalizeVulnerability);
     }
   },
 

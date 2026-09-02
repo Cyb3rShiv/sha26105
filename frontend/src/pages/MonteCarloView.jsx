@@ -78,6 +78,13 @@ export default function MonteCarloView() {
   // Scenario Comparison State
   const [baselineResults, setBaselineResults] = useState(null);
   const [isComparing, setIsComparing] = useState(false);
+  const [lastSimulatedParams, setLastSimulatedParams] = useState({
+    iterations: 10000,
+    volatilitySigma: 0.35,
+    lossMultiplier: 1.0,
+    controlEffectiveness: 0.0,
+    timeHorizonYears: 1
+  });
 
   const runSimulation = async (
     count = iterations,
@@ -114,6 +121,13 @@ export default function MonteCarloView() {
       });
       if (data) {
         setResults(data);
+        setLastSimulatedParams({
+          iterations: count,
+          volatilitySigma: sigma,
+          lossMultiplier: mult,
+          controlEffectiveness: eff,
+          timeHorizonYears: horizon
+        });
         // Save initial baseline if not set
         if (!baselineResults) {
           setBaselineResults(data);
@@ -158,12 +172,25 @@ export default function MonteCarloView() {
       ]
     : [];
 
-  // Scenario Comparison Metrics
+  const hasParamChanges = Boolean(
+    results && (
+      iterations !== lastSimulatedParams.iterations ||
+      volatilitySigma !== lastSimulatedParams.volatilitySigma ||
+      lossMultiplier !== lastSimulatedParams.lossMultiplier ||
+      controlEffectiveness !== lastSimulatedParams.controlEffectiveness ||
+      timeHorizonYears !== lastSimulatedParams.timeHorizonYears
+    )
+  );
+
+  // Scenario Comparison Metrics (Sign-Aware: handles both improvements and increased risk)
   const deltaLoss = baselineResults && results ? baselineResults.mean_loss - results.mean_loss : 0;
   const deltaVaR = baselineResults && results ? baselineResults.var_95 - results.var_95 : 0;
-  const reductionPct = baselineResults && baselineResults.mean_loss > 0 && deltaLoss > 0
-    ? ((deltaLoss / baselineResults.mean_loss) * 100).toFixed(1)
-    : 0;
+  const isBetter = deltaLoss > 0;
+  const isWorse = deltaLoss < 0;
+  const absDeltaLoss = Math.abs(deltaLoss);
+  const shiftPct = baselineResults && baselineResults.mean_loss > 0
+    ? ((absDeltaLoss / baselineResults.mean_loss) * 100).toFixed(1)
+    : '0.0';
 
   return (
     <div className="p-6 md:p-8 space-y-6 max-w-[1400px] mx-auto">
@@ -201,7 +228,7 @@ export default function MonteCarloView() {
       <Reveal>
         <Panel
           title="Analytical Simulation Configuration"
-          subtitle="Tune threat likelihoods, impact volatility dispersion, control mitigation factors, and trial volume."
+          subtitle="Adjust assumptions, then run the simulation to see how the loss distribution changes."
           icon={Sliders}
           bodyClassName="p-6"
         >
@@ -247,6 +274,11 @@ export default function MonteCarloView() {
               </div>
               <input
                 type="range"
+                aria-label="Control mitigation factor"
+                aria-valuemin={0}
+                aria-valuemax={80}
+                aria-valuenow={Math.round(controlEffectiveness * 100)}
+                aria-valuetext={`${(controlEffectiveness * 100).toFixed(0)}% mitigation`}
                 min="0.0"
                 max="0.80"
                 step="0.05"
@@ -273,6 +305,11 @@ export default function MonteCarloView() {
               </div>
               <input
                 type="range"
+                aria-label="Loss volatility dispersion sigma"
+                aria-valuemin={0.15}
+                aria-valuemax={0.65}
+                aria-valuenow={volatilitySigma}
+                aria-valuetext={`${volatilitySigma.toFixed(2)} sigma`}
                 min="0.15"
                 max="0.65"
                 step="0.05"
@@ -299,6 +336,11 @@ export default function MonteCarloView() {
               </div>
               <input
                 type="range"
+                aria-label="Loss severity multiplier"
+                aria-valuemin={0.5}
+                aria-valuemax={2.5}
+                aria-valuenow={lossMultiplier}
+                aria-valuetext={`${lossMultiplier.toFixed(2)}x severity`}
                 min="0.5"
                 max="2.5"
                 step="0.1"
@@ -346,10 +388,26 @@ export default function MonteCarloView() {
                 className="btn btn-primary text-xs w-full py-3 shadow-sm justify-center"
               >
                 {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-                <span>{loading ? `Simulating ${iterations.toLocaleString()} Trials…` : 'Run Monte Carlo Simulation'}</span>
+                <span>
+                  {loading
+                    ? `Simulating ${iterations.toLocaleString()} Trials…`
+                    : hasParamChanges
+                    ? 'Run Simulation (Updated Parameters)'
+                    : 'Run Monte Carlo Simulation'}
+                </span>
               </button>
             </div>
           </div>
+
+          {hasParamChanges && (
+            <div className="mt-4 p-3 rounded-lg bg-amber-50 border border-amber-300 text-xs text-amber-900 flex items-center justify-between gap-3 shadow-2xs">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0" />
+                <span>Simulation assumptions modified. Click "Run Simulation" to recalculate loss distribution.</span>
+              </div>
+              <span className="badge-amber font-mono font-bold text-[10px] shrink-0">Unsimulated Changes</span>
+            </div>
+          )}
 
           {validationError && (
             <div className="mt-4 p-3 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-center gap-2">
@@ -363,28 +421,43 @@ export default function MonteCarloView() {
       {/* ===== STEP 2: SCENARIO COMPARISON BANNER (IF ACTIVE) ===== */}
       {isComparing && baselineResults && results && (
         <Reveal>
-          <div className="p-5 rounded-xl bg-teal-50/80 border border-teal-300 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className={`p-5 rounded-xl border shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 ${
+            isBetter ? 'bg-teal-50/80 border-teal-300' : isWorse ? 'bg-rose-50/80 border-rose-300' : 'bg-slate-50 border-slate-300'
+          }`}>
             <div className="flex items-start gap-3">
-              <div className="p-2 rounded-lg bg-teal-700 text-white shrink-0">
+              <div className={`p-2 rounded-lg text-white shrink-0 ${isBetter ? 'bg-teal-700' : isWorse ? 'bg-rose-700' : 'bg-slate-700'}`}>
                 <GitCompare className="w-5 h-5" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="font-bold text-sm text-teal-950">Active Comparative Scenario Evaluation</span>
-                  <span className="badge-emerald font-bold">−{reductionPct}% Exposure Shift</span>
+                  <span className="font-bold text-sm text-slate-950">Active Comparative Scenario Evaluation</span>
+                  {isBetter && (
+                    <span className="badge-emerald font-bold">↓ −{shiftPct}% Exposure Reduction</span>
+                  )}
+                  {isWorse && (
+                    <span className="badge-rose font-bold">↑ +{shiftPct}% Additional Exposure</span>
+                  )}
+                  {!isBetter && !isWorse && (
+                    <span className="badge-slate font-bold">No Material Exposure Change</span>
+                  )}
                 </div>
-                <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-xs font-mono text-teal-900 mt-1.5">
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-xs font-mono text-slate-800 mt-1.5">
                   <span>Baseline Mean: <strong>{formatINR(baselineResults.mean_loss)}</strong></span>
                   <span>→</span>
                   <span>Scenario Mean: <strong>{formatINR(results.mean_loss)}</strong></span>
                   <span>•</span>
-                  <span>Total Exposure Reduction: <strong className="text-teal-700 font-bold">{formatINR(deltaLoss)}</strong></span>
+                  <span>
+                    {isBetter ? 'Total Exposure Reduction: ' : isWorse ? 'Net Exposure Increase: ' : 'Net Delta: '}
+                    <strong className={`font-bold ${isBetter ? 'text-teal-700' : isWorse ? 'text-rose-700' : 'text-slate-700'}`}>
+                      {formatINR(absDeltaLoss)}
+                    </strong>
+                  </span>
                 </div>
               </div>
             </div>
             <div className="text-right shrink-0">
-              <div className="text-[10.5px] uppercase font-mono text-teal-800 font-semibold">95% VaR Shift</div>
-              <div className="text-lg font-mono font-bold text-teal-900">
+              <div className="text-[10.5px] uppercase font-mono text-slate-600 font-semibold">95% VaR Shift</div>
+              <div className="text-lg font-mono font-bold text-slate-900">
                 {formatINR(baselineResults.var_95)} → {formatINR(results.var_95)}
               </div>
             </div>

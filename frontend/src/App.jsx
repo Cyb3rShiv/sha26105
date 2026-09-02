@@ -232,6 +232,8 @@ export default function App() {
       <Sidebar
         activeTab={activeTab}
         setActiveTab={navigate}
+        assetCount={assets.length || 6}
+        vulnCount={vulnerabilities.length || 10}
         liveEventsCount={events.length}
         isOpen={isNavOpen}
         onClose={() => setIsNavOpen(false)}

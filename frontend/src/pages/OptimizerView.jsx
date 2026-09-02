@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Coins, Sparkles, CheckCircle2, XCircle, Sliders, ShieldCheck, Award, RotateCcw, AlertTriangle } from 'lucide-react';
 import CurrencyFormatter, { formatINR } from '../components/CurrencyFormatter';
 import { api } from '../services/api';
@@ -51,12 +51,15 @@ export default function OptimizerView({ onNavigate }) {
     }
   };
 
-  useEffect(() => {
-    runOptimization(2500000);
-  }, []);
+  const isFirstMount = useRef(true);
 
-  // Debounced slider handler to avoid request flooding
+  // Run immediately on initial mount, debounce subsequent slider adjustments
   useEffect(() => {
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      runOptimization(budget);
+      return;
+    }
     const handler = setTimeout(() => {
       runOptimization(budget);
     }, 180);

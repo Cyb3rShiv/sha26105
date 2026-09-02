@@ -99,6 +99,7 @@ def get_current_metrics(state: Dict[str, Any]):
     return round(total_eal, 2), avg_score
 
 @app.api_route("/api/health", methods=["GET", "HEAD"])
+@app.api_route("/health", methods=["GET", "HEAD"])
 def health_check():
     return {
         "status": "ok",
@@ -184,7 +185,17 @@ def get_dashboard(x_session_id: Optional[str] = Header(None)) -> Dict[str, Any]:
         "risk_trend_12m": trend,
         "eal_by_asset": eal_by_asset,
         "top_risk_drivers": top_drivers,
-        "top_vulnerabilities": vulnerabilities[:4],
+        "top_vulnerabilities": [
+            {
+                **v,
+                "cvss": v.get("cvss_score", 0.0),
+                "cvss_score": v.get("cvss_score", 0.0),
+                "priority": "P1" if (v.get("severity") == "Critical" or v.get("cvss_score", 0.0) >= 9.0) else ("P2" if v.get("cvss_score", 0.0) >= 7.0 else "P3"),
+                "risk_driver": "CISA Known Exploited" if v.get("is_kev") else ("High EPSS Probability" if v.get("epss_score", 0.0) > 0.5 else ("Critical CVSS RCE" if v.get("cvss_score", 0.0) >= 9.0 else "Elevated Exposure")),
+                "threat_factor": round(2.0 + v.get("epss_score", 0.0) * 2.0, 1) if v.get("is_kev") else round(1.0 + v.get("cvss_score", 0.0) / 10.0, 1)
+            }
+            for v in vulnerabilities[:5]
+        ],
         "recommended_portfolio_summary": opt_res,
         "recent_events": state["events"][-5:],
         "data_classification": "Synthetic Demo Data"
@@ -192,9 +203,16 @@ def get_dashboard(x_session_id: Optional[str] = Header(None)) -> Dict[str, Any]:
 
 @app.get("/api/assets")
 def get_assets(x_session_id: Optional[str] = Header(None)) -> List[Dict[str, Any]]:
-    """Returns all enterprise assets sorted by EAL / Risk Score."""
+    """Returns all enterprise assets sorted by EAL / Risk Score with standardized schema."""
     state = get_session_state(x_session_id)
-    return sorted(state["assets"], key=lambda x: x["eal"], reverse=True)
+    sorted_assets = sorted(state["assets"], key=lambda x: x["eal"], reverse=True)
+    return [
+        {
+            **a,
+            "short_name": a.get("short_name") or (a["name"].split()[0] + (" Server" if "Server" in a["name"] else " DB" if "Database" in a["name"] else " API" if "API" in a["name"] else ""))
+        }
+        for a in sorted_assets
+    ]
 
 @app.get("/api/assets/{asset_id}")
 def get_asset_detail(asset_id: str, x_session_id: Optional[str] = Header(None)) -> Dict[str, Any]:
@@ -378,7 +396,7 @@ def reset_state(x_session_id: Optional[str] = Header(None)):
     key = x_session_id or "default_singleton"
     SESSION_STORE[key] = get_initial_state()
     return {
-        "status": "reset_successful",
+        "status": "success",
         "message": "Runtime state successfully restored to FinTrust Bank baseline (EAL ₹1.84 Cr, Score 70)."
     }
 

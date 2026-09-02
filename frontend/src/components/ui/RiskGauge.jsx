@@ -10,6 +10,8 @@ const COLOR = {
   ok: '#16a34a',
 };
 
+import { getRiskLevel } from '../../utils/riskScoring';
+
 export default function RiskGauge({ score = 0, size = 196, caption = 'Enterprise Risk Score' }) {
   const [display, setDisplay] = useState(0);
   const prevRef = useRef(0);
@@ -42,8 +44,8 @@ export default function RiskGauge({ score = 0, size = 196, caption = 'Enterprise
   const arc = Math.PI * r;
   const progress = Math.min(100, Math.max(0, display)) / 100;
 
-  const tone = display >= 70 ? 'danger' : display >= 40 ? 'warn' : 'ok';
-  const color = COLOR[tone];
+  const riskInfo = getRiskLevel(display);
+  const color = riskInfo.color;
   const trackD = `M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`;
 
   const polar = (deg) => {
@@ -59,7 +61,14 @@ export default function RiskGauge({ score = 0, size = 196, caption = 'Enterprise
   };
 
   return (
-    <div className="relative inline-flex flex-col items-center" role="img" aria-label={`${caption}: ${score} out of 100`}>
+    <div
+      className="relative inline-flex flex-col items-center"
+      role="meter"
+      aria-valuenow={Math.round(display)}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-label={`${caption}: ${Math.round(display)} out of 100 (${riskInfo.level})`}
+    >
       <svg width={size} height={size / 2 + 24} viewBox={`0 0 ${size} ${size / 2 + 24}`}>
         {[0, 45, 90, 135, 180].map((deg) => {
           const t = tickAt(deg);

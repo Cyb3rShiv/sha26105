@@ -2,6 +2,8 @@ import React from 'react';
 import { AlertTriangle, Building2, Menu, RefreshCw, Sparkles, Home, Search, WifiOff, Activity } from 'lucide-react';
 import CurrencyFormatter from './CurrencyFormatter';
 
+import { getRiskLevel } from '../utils/riskScoring';
+
 export default function Header({
   currentEal = 18400000,
   riskScore = 70,
@@ -13,7 +15,9 @@ export default function Header({
   onGoToLanding,
   onOpenCommandPalette,
 }) {
-  const isHighRisk = riskScore > 70;
+  const riskInfo = getRiskLevel(riskScore);
+  const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
+  const shortcutKey = isMac ? '⌘K' : 'Ctrl+K';
 
   return (
     <header className="h-16 bg-white border-b border-slate-200 px-3 sm:px-4 md:px-6 flex items-center justify-between sticky top-0 z-30 shadow-xs gap-2 sm:gap-3">
@@ -44,12 +48,12 @@ export default function Header({
           <button
             onClick={onOpenCommandPalette}
             className="hidden md:flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-mono text-slate-500 hover:text-slate-800 hover:bg-slate-100 border border-slate-200 transition-all shadow-2xs shrink-0"
-            title="Open Command Palette (Ctrl+K or Cmd+K)"
+            title={`Open Command Palette (${shortcutKey})`}
           >
             <Search className="w-3.5 h-3.5 text-teal-700" />
             <span>Search…</span>
             <kbd className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-600 font-bold">
-              ⌘K
+              {shortcutKey}
             </kbd>
           </button>
         )}
@@ -63,7 +67,7 @@ export default function Header({
           {isOnline ? (
             <span className="hidden xl:inline-flex items-center gap-1 text-[10px] text-teal-800 font-mono bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-full font-bold shrink-0">
               <span className="w-1.5 h-1.5 rounded-full bg-teal-600 animate-pulse" />
-              LIVE TELEMETRY
+              EVENT-DRIVEN TELEMETRY
             </span>
           ) : (
             <span className="hidden xl:inline-flex items-center gap-1 text-[10px] text-amber-800 font-mono bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full font-bold shrink-0" title="Running in high-precision local fallback engine">
@@ -84,11 +88,11 @@ export default function Header({
                 <CurrencyFormatter value={currentEal} />
               </span>
               <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-bold border ${
-                isHighRisk 
+                riskInfo.isCritical 
                   ? 'bg-rose-50 text-rose-700 border-rose-200' 
                   : 'bg-amber-50 text-amber-800 border-amber-200'
               }`}>
-                {riskScore}/100
+                {riskScore}/100 · {riskInfo.level}
               </span>
             </div>
           </div>

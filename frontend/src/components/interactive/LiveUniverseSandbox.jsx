@@ -130,12 +130,15 @@ export default function LiveUniverseSandbox({ onLaunchConsole }) {
             <div className="flex items-center gap-2 text-teal-400 text-xs font-mono font-bold uppercase tracking-wider">
               <Sparkles className="w-3.5 h-3.5" />
               <span>Interactive Decision Universe</span>
+              <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-teal-300 border border-teal-500/30 font-mono">
+                Illustrative Scenario Model
+              </span>
             </div>
             <h3 className="text-2xl md:text-3xl font-bold tracking-tight text-white mt-1">
               See the risk before it happens.
             </h3>
             <p className="text-sm text-slate-400 mt-1 max-w-xl">
-              Drag the capital allocation slider below. Watch how the 0/1 Knapsack optimizer shifts the tail loss probability distribution in real time.
+              Drag the capital allocation slider below to preview benchmark 0/1 Knapsack optimization stages and their impact on tail loss exposure.
             </p>
           </div>
 

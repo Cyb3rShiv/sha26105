@@ -40,7 +40,7 @@ export default function RiskUniverseHeroCanvas({ mode = 'constellation' }) {
 
     // 6 Primary Enterprise Cluster Anchors (FinTrust Bank)
     const anchors = [
-      { xPct: 0.22, yPct: 0.38, name: 'Payment Gateway', color: 'rgba(225, 29, 72, 0.85)', radius: 7 },
+      { xPct: 0.22, yPct: 0.38, name: 'Payment Server', color: 'rgba(225, 29, 72, 0.85)', radius: 7 },
       { xPct: 0.48, yPct: 0.28, name: 'Core Banking DB', color: 'rgba(15, 118, 110, 0.9)', radius: 8 },
       { xPct: 0.78, yPct: 0.42, name: 'Active Directory', color: 'rgba(217, 119, 6, 0.85)', radius: 6 },
       { xPct: 0.35, yPct: 0.68, name: 'Web Banking', color: 'rgba(14, 165, 233, 0.85)', radius: 6 },

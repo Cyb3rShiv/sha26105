@@ -50,6 +50,8 @@ const NAV_GROUPS = [
 export default function Sidebar({
   activeTab,
   setActiveTab,
+  assetCount = 6,
+  vulnCount = 10,
   liveEventsCount = 0,
   isOpen = false,
   onClose,
@@ -68,6 +70,12 @@ export default function Sidebar({
   const handleSelect = (id) => {
     setActiveTab(id);
     if (onClose) onClose();
+  };
+
+  const getBadge = (item) => {
+    if (item.id === 'assets') return assetCount ? String(assetCount) : '6';
+    if (item.id === 'vulnerabilities') return vulnCount ? String(vulnCount) : '10';
+    return item.badge;
   };
 
   return (
@@ -100,23 +108,23 @@ export default function Sidebar({
                   PS 26105
                 </span>
               </div>
-              <div className="text-[10.5px] text-slate-600 font-mono">FinTrust Bank SOC</div>
+              <div className="text-[11px] text-slate-600 font-mono">FinTrust Bank Console</div>
             </div>
           </div>
           <button
             onClick={onClose}
-            aria-label="Close navigation"
+            aria-label="Close sidebar"
             className="p-1 rounded-md text-slate-400 hover:text-slate-600 lg:hidden"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Navigation Link Groups */}
-        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6" aria-label="Sidebar Sections">
+        {/* Navigation Items */}
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6" aria-label="Console Modules">
           {NAV_GROUPS.map((group) => (
-            <div key={group.label} className="space-y-1">
-              <div className="px-2 text-[10px] font-mono uppercase tracking-wider text-slate-600 font-bold">
+            <div key={group.label}>
+              <div className="px-2.5 mb-1.5 text-[10.5px] font-mono font-bold uppercase tracking-wider text-slate-500">
                 {group.label}
               </div>
               <ul className="space-y-0.5">
@@ -124,6 +132,7 @@ export default function Sidebar({
                   const Icon = item.icon;
                   const isActive = activeTab === item.id;
                   const count = item.id === 'ingestion' ? liveEventsCount : null;
+                  const badgeText = getBadge(item);
 
                   return (
                     <li key={item.id}>
@@ -144,7 +153,7 @@ export default function Sidebar({
                           <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-teal-100 text-teal-800 font-bold shrink-0">
                             {count} evt
                           </span>
-                        ) : item.badge ? (
+                        ) : badgeText ? (
                           <span
                             className={`text-[9px] font-mono px-1.5 py-0.5 rounded uppercase font-bold shrink-0 ${
                               isActive
@@ -152,7 +161,7 @@ export default function Sidebar({
                                 : 'bg-slate-100 text-slate-500'
                             }`}
                           >
-                            {item.badge}
+                            {badgeText}
                           </span>
                         ) : null}
                       </button>
@@ -171,7 +180,7 @@ export default function Sidebar({
               <div className="flex items-center gap-1.5">
                 <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
                 <span className="text-[11px] font-semibold text-slate-700">
-                  {isOnline ? 'Continuous Engine' : 'Local Simulation'}
+                  {isOnline ? 'Live Risk Engine' : 'Local Simulation'}
                 </span>
               </div>
               <span className={`text-[10px] font-mono font-bold ${isOnline ? 'text-emerald-700' : 'text-amber-700'}`}>

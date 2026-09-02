@@ -74,6 +74,28 @@ export default function LandingPage({ onLaunchConsole, dashboardData }) {
   const currentEal = dashboardData?.expected_annual_loss || 18400000;
   const currentRiskScore = dashboardData?.enterprise_risk_score || 70;
   const currentVar95 = dashboardData?.var_95 || 76400000;
+  const totalReduction = dashboardData?.recommended_portfolio_summary?.total_risk_reduction || 5900000;
+  const optimalSpend = dashboardData?.recommended_portfolio_summary?.total_cost || 2500000;
+  const mitigatablePct = currentEal > 0 ? ((totalReduction / currentEal) * 100).toFixed(1) : '32.1';
+  const overallRosi = dashboardData?.recommended_portfolio_summary?.overall_rosi || 2.36;
+
+  const handleTabKeyDown = (e, currentId) => {
+    const tabs = ['overview', 'simulation', 'optimizer'];
+    const idx = tabs.indexOf(currentId);
+    if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      setPreviewTab(tabs[(idx + 1) % tabs.length]);
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      setPreviewTab(tabs[(idx - 1 + tabs.length) % tabs.length]);
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      setPreviewTab(tabs[0]);
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      setPreviewTab(tabs[tabs.length - 1]);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 font-sans selection:bg-teal-100 selection:text-teal-900 overflow-x-hidden">
@@ -121,7 +143,7 @@ export default function LandingPage({ onLaunchConsole, dashboardData }) {
             {/* Status pill with typewriter */}
             <div className="inline-flex flex-wrap items-center justify-center gap-2 px-3 py-1.5 rounded-full bg-white border border-slate-200 shadow-xs text-xs font-mono text-slate-700 max-w-full">
               <span className="w-2 h-2 rounded-full bg-teal-600 animate-pulse shrink-0" />
-              <span className="shrink-0">Continuous Cyber Risk Quantification:</span>
+              <span className="shrink-0">Financial Cyber Risk Quantification:</span>
               <span className="font-bold text-teal-800 text-center sm:text-left min-w-0">
                 {displayedText}
                 <span className="animate-pulse">|</span>
@@ -138,7 +160,7 @@ export default function LandingPage({ onLaunchConsole, dashboardData }) {
 
             {/* Subtitle */}
             <p className="text-sm sm:text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed">
-              Continuous FAIR financial quantification, NumPy-accelerated Monte Carlo loss distributions, and 0/1 Knapsack capital optimization designed for Indian banking and regulated enterprises.
+              FAIR financial quantification, NumPy-accelerated Monte Carlo loss distributions, and 0/1 Knapsack capital optimization designed for Indian banking and regulated enterprises.
             </p>
 
             {/* Primary Action Group */}
@@ -175,7 +197,7 @@ export default function LandingPage({ onLaunchConsole, dashboardData }) {
                 <div className="w-3 h-3 rounded-full bg-slate-300" />
                 <span className="text-[11px] font-mono text-slate-500 ml-2">cyberquant.bank/console</span>
               </div>
-              <div className="flex items-center gap-1 p-0.5 bg-white rounded-lg border border-slate-200 text-xs font-mono w-full sm:w-auto justify-between sm:justify-start" role="tablist">
+              <div className="flex items-center gap-1 p-0.5 bg-white rounded-lg border border-slate-200 text-xs font-mono w-full sm:w-auto justify-between sm:justify-start" role="tablist" aria-label="Product preview tabs">
                 {[
                   { id: 'overview', label: 'Executive Overview' },
                   { id: 'simulation', label: 'Monte Carlo 10K' },
@@ -186,6 +208,7 @@ export default function LandingPage({ onLaunchConsole, dashboardData }) {
                     role="tab"
                     aria-selected={previewTab === t.id}
                     onClick={() => setPreviewTab(t.id)}
+                    onKeyDown={(e) => handleTabKeyDown(e, t.id)}
                     className={`px-2.5 py-1 rounded-md transition-all font-bold text-[11px] sm:text-xs ${
                       previewTab === t.id
                         ? 'bg-teal-800 text-white shadow-xs'
@@ -203,24 +226,24 @@ export default function LandingPage({ onLaunchConsole, dashboardData }) {
               <div className="p-4 sm:p-6 md:p-8 space-y-5 sm:space-y-6 bg-[#f8fafc]">
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
                   <div className="p-3.5 sm:p-4 bg-white rounded-xl border border-slate-200 shadow-xs">
-                    <div className="text-[10px] sm:text-[10.5px] font-mono uppercase text-slate-400 font-semibold">Expected Annual Loss</div>
+                    <div className="text-[10px] sm:text-[10.5px] font-mono uppercase text-slate-500 font-semibold">Expected Annual Loss</div>
                     <div className="text-lg sm:text-xl font-bold font-mono text-slate-900 mt-1">{formatINR(currentEal)}</div>
-                    <div className="text-[10px] text-teal-700 font-mono mt-1 font-bold">−32.1% mitigatable</div>
+                    <div className="text-[10px] text-teal-700 font-mono mt-1 font-bold">−{mitigatablePct}% mitigatable</div>
                   </div>
                   <div className="p-3.5 sm:p-4 bg-white rounded-xl border border-slate-200 shadow-xs">
-                    <div className="text-[10px] sm:text-[10.5px] font-mono uppercase text-slate-400 font-semibold">Enterprise Risk Score</div>
+                    <div className="text-[10px] sm:text-[10.5px] font-mono uppercase text-slate-500 font-semibold">Enterprise Risk Score</div>
                     <div className="text-lg sm:text-xl font-bold font-mono text-slate-900 mt-1">{currentRiskScore} <span className="text-slate-400 text-xs font-normal">/ 100</span></div>
                     <div className="text-[10px] text-amber-700 font-mono mt-1 font-bold">Elevated Posture</div>
                   </div>
                   <div className="p-3.5 sm:p-4 bg-white rounded-xl border border-slate-200 shadow-xs">
-                    <div className="text-[10px] sm:text-[10.5px] font-mono uppercase text-slate-400 font-semibold">95% Value at Risk</div>
+                    <div className="text-[10px] sm:text-[10.5px] font-mono uppercase text-slate-500 font-semibold">95% Value at Risk</div>
                     <div className="text-lg sm:text-xl font-bold font-mono text-rose-600 mt-1">{formatINR(currentVar95)}</div>
                     <div className="text-[10px] text-slate-500 font-mono mt-1">1-in-20-year loss</div>
                   </div>
                   <div className="p-3.5 sm:p-4 bg-white rounded-xl border border-slate-200 shadow-xs">
-                    <div className="text-[10px] sm:text-[10.5px] font-mono uppercase text-slate-400 font-semibold">Knapsack ROSI Multiplier</div>
-                    <div className="text-lg sm:text-xl font-bold font-mono text-teal-700 mt-1">2.36x</div>
-                    <div className="text-[10px] text-slate-500 font-mono mt-1">₹59L / ₹25L Spend</div>
+                    <div className="text-[10px] sm:text-[10.5px] font-mono uppercase text-slate-500 font-semibold">Knapsack ROSI Multiplier</div>
+                    <div className="text-lg sm:text-xl font-bold font-mono text-teal-700 mt-1">{overallRosi}x</div>
+                    <div className="text-[10px] text-slate-500 font-mono mt-1">{formatINR(totalReduction)} / {formatINR(optimalSpend)} Spend</div>
                   </div>
                 </div>
 
@@ -230,7 +253,7 @@ export default function LandingPage({ onLaunchConsole, dashboardData }) {
                       <Sparkles className="w-4 h-4" />
                     </div>
                     <div>
-                      <div className="font-bold text-xs text-slate-900">Recommended CISO Security Allocation (₹25.0 Lakhs)</div>
+                      <div className="font-bold text-xs text-slate-900">Recommended CISO Security Allocation ({formatINR(optimalSpend)})</div>
                       <div className="text-[11px] text-slate-500 font-mono mt-0.5">
                         Selected: Emergency Patching (₹15L) + FIDO2 MFA (₹6L) + Air-Gapped Backups (₹4L)
                       </div>
@@ -251,8 +274,8 @@ export default function LandingPage({ onLaunchConsole, dashboardData }) {
             {previewTab === 'simulation' && (
               <div className="p-4 sm:p-6 md:p-8 space-y-5 bg-[#f8fafc]">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono">
-                  <span className="font-bold text-slate-800">Stochastic Distribution: 10,000 Iterations</span>
-                  <span className="badge-emerald font-bold self-start sm:self-auto">Compound Log-Normal (σ = 0.35)</span>
+                  <span className="font-bold text-slate-800">Illustrative Loss Distribution (10,000 Trial Benchmark Model)</span>
+                  <span className="badge-slate font-bold self-start sm:self-auto text-[10.5px]">Benchmark Log-Normal (σ = 0.35)</span>
                 </div>
                 <div className="h-40 bg-white rounded-xl border border-slate-200 p-3 flex items-end justify-between gap-1">
                   {[2, 8, 22, 54, 88, 140, 180, 150, 110, 75, 45, 28, 18, 12, 8, 5, 3, 2, 1, 1].map((h, i) => (
@@ -270,6 +293,12 @@ export default function LandingPage({ onLaunchConsole, dashboardData }) {
                   <span>P50: ₹85.0L</span>
                   <span className="text-amber-700 font-bold">P90 Tail: ₹5.95Cr</span>
                   <span className="text-rose-600 font-bold">P95 VaR: {formatINR(currentVar95)}</span>
+                </div>
+                <div className="text-[11px] font-mono text-slate-500 border-t border-slate-200/80 pt-2 flex items-center justify-between">
+                  <span>Illustrative scenario · Live parametric trials computed in FinTrust Console</span>
+                  <button onClick={() => onLaunchConsole('monte_carlo')} className="text-teal-700 hover:text-teal-900 font-bold flex items-center gap-1">
+                    Open Monte Carlo <ArrowRight className="w-3 h-3" />
+                  </button>
                 </div>
               </div>
             )}

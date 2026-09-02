@@ -35,6 +35,7 @@ import Panel from '../components/ui/Panel';
 import RiskGauge from '../components/ui/RiskGauge';
 import ChartTooltip from '../components/charts/ChartTooltip';
 import { CHART } from '../components/charts/chartTheme';
+import { getRiskLevel } from '../utils/riskScoring';
 
 // WebGL instrument — lazy so `three` stays out of the critical bundle
 const ExposureConstellation = lazy(() => import('../components/graphics/ExposureConstellation'));
@@ -122,14 +123,16 @@ export default function DashboardView({ dashboardData, onNavigate, onSimulateEve
     : { month: 'Live', eal: expected_annual_loss };
   const peakMonthInsight = `Peak exposure was ${formatINR(peakMonthObj.eal)} (${peakMonthObj.month}), driven by unpatched KEV vulnerabilities.`;
 
+  const riskLevelInfo = getRiskLevel(enterprise_risk_score);
+
   const kpis = [
     {
       title: "Enterprise Risk Score",
       value: <CountUp value={enterprise_risk_score} format={(v) => `${Math.round(v)} / 100`} />,
       sub: "Aggregated Likelihood × Impact",
-      tone: enterprise_risk_score > 70 ? 'danger' : 'warn',
-      badge: enterprise_risk_score > 70 ? "CRITICAL (P1)" : "ELEVATED",
-      badgeTone: enterprise_risk_score > 70 ? "danger" : "warn",
+      tone: riskLevelInfo.tone,
+      badge: riskLevelInfo.level,
+      badgeTone: riskLevelInfo.badgeTone,
     },
     {
       title: "Expected Annual Loss (EAL)",
@@ -265,7 +268,7 @@ export default function DashboardView({ dashboardData, onNavigate, onSimulateEve
                   {eal_by_asset.length} Assets · {dashboardData.vulnerability_count || 10} CVEs
                 </div>
                 <div className="text-[11px] font-mono text-slate-500 mt-0.5">
-                  Continuous re-scoring
+                  Event-driven re-scoring
                 </div>
               </button>
             </div>
@@ -302,7 +305,7 @@ export default function DashboardView({ dashboardData, onNavigate, onSimulateEve
                 </div>
                 <div className="flex items-center justify-end gap-1.5 mt-2 text-[10.5px] text-slate-500 font-mono">
                   <ShieldAlert className="w-3.5 h-3.5 text-rose-600" />
-                  <span>Re-calculated live</span>
+                  <span>Recalculated upon telemetry events</span>
                 </div>
               </div>
             </div>
@@ -508,13 +511,13 @@ export default function DashboardView({ dashboardData, onNavigate, onSimulateEve
                       <RiskBadge level={vuln.severity} priority={vuln.priority} isKev={vuln.is_kev} />
                     </div>
                     <span className="text-[11.5px] font-mono font-bold text-rose-600">
-                      CVSS {vuln.cvss}
+                      CVSS {vuln.cvss ?? vuln.cvss_score ?? '—'}
                     </span>
                   </div>
                   <div className="text-[12px] text-slate-700 mt-1 font-medium truncate">{vuln.title}</div>
                   <div className="flex items-center justify-between text-[10.5px] text-slate-500 font-mono mt-1.5 pt-1.5 border-t border-slate-200">
-                    <span>Driver: {vuln.risk_driver}</span>
-                    <span>Threat: {vuln.threat_factor}x</span>
+                    <span>Driver: {vuln.risk_driver || (vuln.is_kev ? 'CISA Known Exploited' : 'Elevated Exposure')}</span>
+                    <span>Threat: {vuln.threat_factor ? `${vuln.threat_factor}x` : '1.0x'}</span>
                   </div>
                 </div>
               ))}
