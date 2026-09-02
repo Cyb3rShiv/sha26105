@@ -53,6 +53,7 @@ export default function Sidebar({
   liveEventsCount = 0,
   isOpen = false,
   onClose,
+  isOnline = true,
 }) {
   // Escape closes the mobile drawer
   useEffect(() => {
@@ -94,69 +95,66 @@ export default function Sidebar({
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="text-sm font-bold tracking-tight text-slate-900">CyberQuant</span>
+                <span className="text-sm font-bold tracking-tight text-slate-900">Cyber-Quant</span>
                 <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-teal-50 text-teal-800 border border-teal-200 font-mono font-bold">
                   PS 26105
                 </span>
               </div>
-              <div className="text-[10px] text-slate-500 font-mono">
-                FinTrust Bank SOC
-              </div>
+              <div className="text-[10.5px] text-slate-600 font-mono">FinTrust Bank SOC</div>
             </div>
           </div>
           <button
             onClick={onClose}
             aria-label="Close navigation"
-            className="p-1.5 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors lg:hidden"
+            className="p-1 rounded-md text-slate-400 hover:text-slate-600 lg:hidden"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Navigation Items */}
-        <nav className="flex-1 px-3 py-4 space-y-5 overflow-y-auto bg-slate-50/50">
+        {/* Navigation Link Groups */}
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6" aria-label="Sidebar Sections">
           {NAV_GROUPS.map((group) => (
-            <div key={group.label}>
-              <div className="text-[10.5px] font-mono font-semibold uppercase tracking-wider text-slate-500 px-3 mb-1.5">
+            <div key={group.label} className="space-y-1">
+              <div className="px-2 text-[10px] font-mono uppercase tracking-wider text-slate-600 font-bold">
                 {group.label}
               </div>
               <ul className="space-y-0.5">
                 {group.items.map((item) => {
                   const Icon = item.icon;
                   const isActive = activeTab === item.id;
-                  const badge =
-                    item.badge === 'Pulse' ? (liveEventsCount > 0 ? `${liveEventsCount} evt` : 'Live') : item.badge;
+                  const count = item.id === 'ingestion' ? liveEventsCount : null;
 
                   return (
                     <li key={item.id}>
                       <button
                         onClick={() => handleSelect(item.id)}
-                        aria-current={isActive ? 'page' : undefined}
-                        className={`group relative w-full flex items-center justify-between px-3 py-2 rounded-lg text-[13px] font-medium transition-all ${
+                        className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition-all ${
                           isActive
-                            ? 'bg-teal-50 text-teal-900 font-bold border border-teal-200 shadow-sm'
-                            : 'text-slate-600 hover:text-slate-900 hover:bg-white hover:border-slate-200 border border-transparent'
+                            ? 'bg-teal-50 text-teal-900 font-bold shadow-xs border border-teal-200'
+                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 border border-transparent'
                         }`}
                       >
-                        <span className="flex items-center gap-2.5 min-w-0">
-                          <Icon
-                            className={`w-4 h-4 shrink-0 transition-colors ${
-                              isActive ? 'text-teal-700' : 'text-slate-400 group-hover:text-slate-600'
-                            }`}
-                          />
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-teal-700' : 'text-slate-600'}`} />
                           <span className="truncate">{item.label}</span>
-                        </span>
-                        {badge && (
+                        </div>
+
+                        {count !== null && count > 0 ? (
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-teal-100 text-teal-800 font-bold shrink-0">
+                            {count} evt
+                          </span>
+                        ) : item.badge ? (
                           <span
-                            className={`text-[9.5px] font-mono font-bold px-1.5 py-0.5 rounded border whitespace-nowrap ${
+                            className={`text-[9px] font-mono px-1.5 py-0.5 rounded uppercase font-bold shrink-0 ${
                               isActive
-                                ? 'bg-teal-100 text-teal-900 border-teal-300'
-                                : 'bg-slate-100 text-slate-500 border-slate-200'
+                                ? 'bg-teal-200 text-teal-900'
+                                : 'bg-slate-100 text-slate-500'
                             }`}
                           >
-                            {badge}
+                            {item.badge}
                           </span>
-                        )}
+                        ) : null}
                       </button>
                     </li>
                   );
@@ -166,19 +164,23 @@ export default function Sidebar({
           ))}
         </nav>
 
-        {/* Footer: System Status */}
+        {/* Footer: Dynamic System Status */}
         <div className="p-3 border-t border-slate-200 shrink-0 bg-white">
           <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 space-y-1.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-[11px] font-semibold text-slate-700">Continuous Engine</span>
+                <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+                <span className="text-[11px] font-semibold text-slate-700">
+                  {isOnline ? 'Continuous Engine' : 'Local Simulation'}
+                </span>
               </div>
-              <span className="text-[10px] font-mono text-emerald-700 font-bold">99.9%</span>
+              <span className={`text-[10px] font-mono font-bold ${isOnline ? 'text-emerald-700' : 'text-amber-700'}`}>
+                {isOnline ? 'Live API' : 'Fallback'}
+              </span>
             </div>
             <div className="text-[10.5px] text-slate-500 flex items-center gap-1">
-              <Zap className="w-3 h-3 text-teal-600" />
-              <span>FAIR + Knapsack Active</span>
+              <Zap className={`w-3 h-3 ${isOnline ? 'text-teal-600' : 'text-amber-600'}`} />
+              <span>{isOnline ? 'FAIR + Knapsack Active' : 'Offline Precision Engine'}</span>
             </div>
           </div>
         </div>

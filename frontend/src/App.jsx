@@ -202,6 +202,7 @@ export default function App() {
         liveEventsCount={events.length}
         isOpen={isNavOpen}
         onClose={() => setIsNavOpen(false)}
+        isOnline={isOnline}
       />
 
       {/* Main content area */}

@@ -85,7 +85,7 @@ export default function LandingPage({ onLaunchConsole, dashboardData }) {
               CQ
             </div>
             <div className="flex items-center gap-1.5 truncate">
-              <span className="font-bold text-slate-900 tracking-tight text-base">CyberQuant</span>
+              <span className="font-bold text-slate-900 tracking-tight text-base">Cyber-Quant</span>
               <span className="text-[10px] font-mono text-teal-800 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded font-bold shrink-0 hidden sm:inline-block">
                 ENTERPRISE
               </span>
