@@ -794,5 +794,25 @@ COMPLIANCE_MAPPINGS_SEED: List[Dict[str, Any]] = [
         "sebi_cscrf": "SEBI CSCRF Ch. 5 (Disaster Recovery & Air-gapped Snapshots)",
         "status": "Recommended (ROI: 1.50x)",
         "linked_control_id": "CTRL-008"
+    },
+    {
+        "control_name": "Next-Gen EDR & XDR Agent Upgrade",
+        "category": "Endpoint Security",
+        "iso27001": "Annex A.12.2.1 (Protection Against Malware)",
+        "nist_csf": "DE.CM-4 (Malicious Code Detection)",
+        "rbi_framework": "RBI Section 7 (Anti-malware & Endpoint Protection)",
+        "sebi_cscrf": "SEBI CSCRF Ch. 4 (Endpoint Threat Detection & Response)",
+        "status": "Recommended (ROI: 1.60x)",
+        "linked_control_id": "CTRL-003"
+    },
+    {
+        "control_name": "API Security Gateway with Web Application Firewall (WAF)",
+        "category": "Application Security",
+        "iso27001": "Annex A.14.1.2 (Securing Application Services)",
+        "nist_csf": "PR.PT-4 (Network and Host Protection)",
+        "rbi_framework": "RBI Section 4 (Web Application Security Controls)",
+        "sebi_cscrf": "SEBI CSCRF Ch. 3 (WAF & Perimeter Application Defenses)",
+        "status": "Recommended (ROI: 1.90x)",
+        "linked_control_id": "CTRL-007"
     }
 ]

@@ -51,6 +51,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.middleware("http")
+async def security_headers_middleware(request: Request, call_next):
+    response = await call_next(request)
+    if "server" in response.headers:
+        del response.headers["server"]
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    return response
+
 # In-memory rate limiter
 RATE_LIMIT_LOG: Dict[str, List[float]] = {}
 
@@ -67,8 +76,25 @@ def apply_rate_limit(identifier: str, limit: int = 60, window_secs: float = 60.0
     timestamps.append(now)
     RATE_LIMIT_LOG[identifier] = timestamps
 
-# Session Store for isolation across demo visitors
+# Bounded in-memory session store with TTL eviction
+SESSION_TTL_SECONDS = 7200.0  # 2-hour TTL for inactive demo sessions
 SESSION_STORE: Dict[str, Dict[str, Any]] = {}
+
+def evict_expired_sessions():
+    now = time.time()
+    expired = [
+        k for k, v in SESSION_STORE.items()
+        if k != "default_singleton" and (now - v.get("last_accessed", 0)) > SESSION_TTL_SECONDS
+    ]
+    for k in expired:
+        del SESSION_STORE[k]
+    if len(SESSION_STORE) > 500:
+        sorted_keys = sorted(
+            [k for k in SESSION_STORE if k != "default_singleton"],
+            key=lambda k: SESSION_STORE[k].get("last_accessed", 0)
+        )
+        for k in sorted_keys[:len(SESSION_STORE) - 400]:
+            del SESSION_STORE[k]
 
 def get_initial_state() -> Dict[str, Any]:
     return {
@@ -85,11 +111,22 @@ def get_initial_state() -> Dict[str, Any]:
 
 def get_session_state(session_id: Optional[str] = None) -> Dict[str, Any]:
     key = session_id or "default_singleton"
-    if key not in SESSION_STORE:
-        if len(SESSION_STORE) > 1000:
-            SESSION_STORE.clear()
-        SESSION_STORE[key] = get_initial_state()
-    return SESSION_STORE[key]
+    now = time.time()
+    if random.random() < 0.1:
+        evict_expired_sessions()
+
+    entry = SESSION_STORE.get(key)
+    if not entry or (key != "default_singleton" and (now - entry.get("last_accessed", 0)) > SESSION_TTL_SECONDS):
+        entry = {
+            "state": get_initial_state(),
+            "last_accessed": now,
+            "created_at": now
+        }
+        SESSION_STORE[key] = entry
+    else:
+        entry["last_accessed"] = now
+
+    return entry["state"]
 
 def get_current_metrics(state: Dict[str, Any]):
     """Calculates live enterprise risk and EAL across current asset state."""
@@ -97,6 +134,17 @@ def get_current_metrics(state: Dict[str, Any]):
     total_eal = sum(a["eal"] for a in assets)
     avg_score = int(round(sum(a["risk_score"] for a in assets) / max(1, len(assets))))
     return round(total_eal, 2), avg_score
+
+@app.get("/")
+def api_index():
+    """Operational root endpoint eliminating default 404."""
+    return {
+        "platform": "Cyber-Quant Cyber Risk Quantification & Investment Optimization Platform",
+        "version": "2.0.0",
+        "status": "operational",
+        "health_endpoint": "/api/health",
+        "docs_endpoint": "/docs"
+    }
 
 @app.api_route("/api/health", methods=["GET", "HEAD"])
 @app.api_route("/health", methods=["GET", "HEAD"])
