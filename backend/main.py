@@ -54,7 +54,7 @@ def get_current_metrics():
     avg_score = int(round(sum(a["risk_score"] for a in assets) / max(1, len(assets))))
     return round(total_eal, 2), avg_score
 
-@app.get("/api/health")
+@app.api_route("/api/health", methods=["GET", "HEAD"])
 def health_check():
     return {"status": "ok", "timestamp": datetime.now().isoformat(), "organization": ORGANIZATION_INFO["name"]}
 
