@@ -129,10 +129,54 @@ export default function LandingPage({ onLaunchConsole, dashboardData }) {
 
           {/* Nav links */}
           <nav className="hidden md:flex items-center gap-7 text-xs font-mono font-medium text-slate-600" aria-label="Quick links">
-            <a href="#pipeline" className="hover:text-teal-800 transition-colors">Methodology</a>
-            <a href="#sandbox" className="hover:text-teal-800 transition-colors">Live Simulation</a>
-            <a href="#features" className="hover:text-teal-800 transition-colors">Capabilities</a>
-            <a href="#compliance" className="hover:text-teal-800 transition-colors">Regulatory Trust</a>
+            <a
+              href="#pipeline"
+              onClick={(e) => {
+                e.preventDefault();
+                const el = document.getElementById('pipeline');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+                window.location.hash = '#pipeline';
+              }}
+              className="hover:text-teal-800 transition-colors"
+            >
+              Methodology
+            </a>
+            <a
+              href="#sandbox"
+              onClick={(e) => {
+                e.preventDefault();
+                const el = document.getElementById('sandbox');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+                window.location.hash = '#sandbox';
+              }}
+              className="hover:text-teal-800 transition-colors"
+            >
+              Live Simulation
+            </a>
+            <a
+              href="#features"
+              onClick={(e) => {
+                e.preventDefault();
+                const el = document.getElementById('features');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+                window.location.hash = '#features';
+              }}
+              className="hover:text-teal-800 transition-colors"
+            >
+              Capabilities
+            </a>
+            <a
+              href="#trust"
+              onClick={(e) => {
+                e.preventDefault();
+                const el = document.getElementById('trust') || document.getElementById('compliance');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+                window.location.hash = '#trust';
+              }}
+              className="hover:text-teal-800 transition-colors"
+            >
+              Regulatory Trust
+            </a>
           </nav>
 
           {/* Actions */}
@@ -352,7 +396,7 @@ export default function LandingPage({ onLaunchConsole, dashboardData }) {
       </section>
 
       {/* ===== REGULATORY TRUST STRIP ===== */}
-      <section id="compliance" className="border-y border-slate-200 bg-white py-8">
+      <section id="trust" className="border-y border-slate-200 bg-white py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div>

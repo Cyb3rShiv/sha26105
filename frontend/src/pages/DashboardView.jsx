@@ -12,6 +12,7 @@ import {
   Sparkles,
   Server,
   Lock,
+  Calculator,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -237,6 +238,14 @@ export default function DashboardView({
                 <ArrowRight className="w-4 h-4" />
               </button>
               <button
+                onClick={() => onNavigate('monte_carlo')}
+                className="btn btn-secondary text-xs"
+                title="Launch Live Monte Carlo Loss Simulator (10,000 Trials)"
+              >
+                <TrendingUp className="w-3.5 h-3.5 text-teal-700" />
+                <span>Live Simulation</span>
+              </button>
+              <button
                 onClick={onSimulateEvent}
                 disabled={isSimulating}
                 className="btn btn-secondary text-xs"
@@ -254,6 +263,35 @@ export default function DashboardView({
                   </>
                 )}
               </button>
+            </div>
+
+            {/* Quick Navigation Strip: Methodology, Live Simulation, Capabilities */}
+            <div className="flex flex-wrap items-center gap-4 mt-5 pt-4 border-t border-slate-100 text-xs font-mono text-slate-500">
+              <span className="text-slate-400 font-bold uppercase text-[10.5px]">Core Explorers:</span>
+              <a
+                href="#pipeline"
+                className="hover:text-teal-900 transition-colors flex items-center gap-1 font-semibold text-slate-700"
+                title="View 6-Stage Quantitative Decision Pipeline"
+              >
+                <Calculator className="w-3.5 h-3.5 text-teal-700" />
+                Methodology
+              </a>
+              <button
+                onClick={() => onNavigate('monte_carlo')}
+                className="hover:text-teal-900 transition-colors flex items-center gap-1 font-semibold text-slate-700 cursor-pointer"
+                title="Open Live Monte Carlo Loss Simulation"
+              >
+                <TrendingUp className="w-3.5 h-3.5 text-teal-700" />
+                Live Simulation
+              </button>
+              <a
+                href="#features"
+                className="hover:text-teal-900 transition-colors flex items-center gap-1 font-semibold text-slate-700"
+                title="Explore Cyber-Quant Capabilities"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-teal-700" />
+                Capabilities
+              </a>
             </div>
 
             {/* Live Concentration Indicators */}

@@ -13,6 +13,7 @@ export default function Header({
   isOnline = true,
   onToggleNav,
   onGoToLanding,
+  onNavigate,
   onOpenCommandPalette,
 }) {
   const riskInfo = getRiskLevel(riskScore);
@@ -31,16 +32,41 @@ export default function Header({
           <Menu className="w-4 h-4" />
         </button>
 
-        {/* Home / Landing button */}
+        {/* Home / Landing button & Quick Links */}
         {onGoToLanding && (
-          <button
-            onClick={onGoToLanding}
-            className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition-colors shrink-0"
-            title="Return to Product Overview"
-          >
-            <Home className="w-3.5 h-3.5 text-slate-500" />
-            <span className="hidden md:inline font-mono">Overview</span>
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={() => onGoToLanding('overview')}
+              className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition-colors shrink-0"
+              title="Return to Product Overview"
+            >
+              <Home className="w-3.5 h-3.5 text-slate-500" />
+              <span className="hidden md:inline font-mono">Overview</span>
+            </button>
+            <div className="hidden lg:flex items-center gap-1 pl-1.5 border-l border-slate-200 text-xs font-mono">
+              <button
+                onClick={() => onGoToLanding('pipeline')}
+                className="px-2 py-1 rounded text-slate-600 hover:text-teal-900 hover:bg-slate-100 transition-colors cursor-pointer font-medium"
+                title="View 6-Stage Quantitative Decision Pipeline"
+              >
+                Methodology
+              </button>
+              <button
+                onClick={() => onNavigate ? onNavigate('monte_carlo') : onGoToLanding('sandbox')}
+                className="px-2 py-1 rounded text-slate-600 hover:text-teal-900 hover:bg-slate-100 transition-colors cursor-pointer font-medium"
+                title="Run Live Monte Carlo Loss Simulation"
+              >
+                Live Simulation
+              </button>
+              <button
+                onClick={() => onGoToLanding('features')}
+                className="px-2 py-1 rounded text-slate-600 hover:text-teal-900 hover:bg-slate-100 transition-colors cursor-pointer font-medium"
+                title="Explore Cyber-Quant Platform Capabilities"
+              >
+                Capabilities
+              </button>
+            </div>
+          </div>
         )}
 
         {/* Command Palette Trigger */}

@@ -41,8 +41,20 @@ const TAB_TITLES = {
   ingestion: 'Live Telemetry & Ingestion Stream | Cyber-Quant'
 };
 
+const LANDING_ANCHORS = [
+  'overview',
+  'landing',
+  'pipeline',
+  'sandbox',
+  'features',
+  'trust',
+  'methodology',
+  'simulation',
+  'capabilities'
+];
+
 export default function App() {
-  const [viewMode, setViewMode] = useState('landing'); // 'landing' | 'app'
+  const [viewMode, setViewMode] = useState('landing'); // 'landing' | 'app' | 'not_found'
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isNavOpen, setIsNavOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
@@ -91,8 +103,19 @@ export default function App() {
     const rawHash = window.location.hash.replace(/^#\/?/, '').trim();
     const rawPath = window.location.pathname.replace(/^\//, '').trim();
     const target = rawHash || rawPath;
-    if (!target || target === 'overview' || target === 'landing') {
+
+    if (!target || LANDING_ANCHORS.includes(target)) {
       setViewMode('landing');
+      if (target && target !== 'overview' && target !== 'landing') {
+        const anchorId = target === 'methodology' ? 'pipeline'
+          : target === 'simulation' ? 'sandbox'
+          : target === 'capabilities' ? 'features'
+          : target;
+        setTimeout(() => {
+          const el = document.getElementById(anchorId);
+          if (el) el.scrollIntoView({ behavior: 'smooth' });
+        }, 80);
+      }
     } else {
       const normalized = target.replace('-', '_');
       const matched = VALID_TABS.find(t => t === target || t === normalized);
@@ -187,8 +210,12 @@ export default function App() {
   };
 
   const navigate = (tab) => {
-    setActiveTab(tab);
     setIsNavOpen(false);
+    if (LANDING_ANCHORS.includes(tab)) {
+      handleGoToLanding(tab);
+      return;
+    }
+    setActiveTab(tab);
     if (viewMode !== 'app') setViewMode('app');
     window.location.hash = `#${tab}`;
   };
@@ -200,10 +227,21 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleGoToLanding = () => {
+  const handleGoToLanding = (sectionId = 'overview') => {
     setViewMode('landing');
-    window.location.hash = '#overview';
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.location.hash = `#${sectionId}`;
+    if (sectionId && sectionId !== 'overview' && sectionId !== 'landing') {
+      const anchorId = sectionId === 'methodology' ? 'pipeline'
+        : sectionId === 'simulation' ? 'sandbox'
+        : sectionId === 'capabilities' ? 'features'
+        : sectionId;
+      setTimeout(() => {
+        const el = document.getElementById(anchorId);
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      }, 80);
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   const currentEal = dashboardData?.expected_annual_loss || 18400000;
@@ -313,6 +351,7 @@ export default function App() {
           isOnline={isOnline}
           onToggleNav={() => setIsNavOpen((v) => !v)}
           onGoToLanding={handleGoToLanding}
+          onNavigate={navigate}
           onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
         />
 
